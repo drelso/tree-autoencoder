@@ -76,9 +76,11 @@ class TreeLSTM(torch.nn.Module):
         edge_mask = edge_order == iteration
 
         # x is a tensor of size n x F
+        print('+++++++++++++++ Features argmax ', torch.argmax(features[node_mask, :], dim=1))
         x = features[node_mask, :]
 
-        # print(f'iteration: {iteration} \n \t node mask: {node_mask}') # \t x: {x}')
+        # print(f'iteration: {iteration} \n \t node mask: {node_mask} \t x: {x}')
+        print(f'x length {x.size()}')
 
         # At iteration 0 none of the nodes should have children
         # Otherwise, select the child nodes needed for current iteration
@@ -103,6 +105,7 @@ class TreeLSTM(torch.nn.Module):
             # print(f'adjacency_list: {adjacency_list}')
 
             # Add child hidden states to parent offset locations
+            ### UNCOMMENT AND CHANGE BACK TO torch.unique_consecutive (ORIGINAL IMPLEMENTATION)
             _, child_counts = torch.unique_consecutive(parent_indexes, return_counts=True)
             child_counts = tuple(child_counts)
 

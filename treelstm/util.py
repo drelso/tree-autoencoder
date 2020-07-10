@@ -21,7 +21,6 @@ def calculate_evaluation_orders(adjacency_list, tree_size):
 
     parent_nodes = adjacency_list[:, 0]
     child_nodes = adjacency_list[:, 1]
-
     n = 0
     
     while unevaluated_nodes.any():
@@ -29,6 +28,7 @@ def calculate_evaluation_orders(adjacency_list, tree_size):
         # print('unevaluated_nodes', unevaluated_nodes)
 
         # Find which child nodes have not been evaluated
+        
         unevaluated_mask = unevaluated_nodes[child_nodes]
 
         # Find the parent nodes of unevaluated children

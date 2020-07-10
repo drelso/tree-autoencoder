@@ -12,6 +12,8 @@
 ###
 
 import random
+import json
+import csv
 import numpy as np
 
 import torch
@@ -44,23 +46,44 @@ import spacy
 | 12 | .        | .        | PUNCT | .    | _                                                     | 5    | punct      | 5:punct _    |               |
 '''
 
+vocab_path = 'data/vocab_bnc_full_seqlist_deptree_SAMPLE.csv'
+word_ixs_dict = {}
+
 def word_ixs():
-    word_ixs_dict = {
-        'the' : 0,
-        'new' : 1,
-        'spending' : 2,
-        'is' : 3,
-        'fueled' : 4,
-        'by' : 5,
-        'clinton' : 6,
-        "'s" : 7,
-        'large' : 8,
-        'bank' : 9,
-        'account' : 10,
-        '.' : 11,
-        '<sos>' : 12,
-        '<eos>' : 13
-    }
+    global vocab_path
+    global word_ixs_dict
+
+    if not word_ixs_dict:
+        with open(vocab_path, 'r', encoding='utf-8') as d:
+            data = csv.reader(d)
+
+            # Manually add special tokens at the beginning of
+            # the vocabulary
+            word_ixs_dict['<UNK>'] = 0
+            word_ixs_dict['<sos>'] = 1
+            word_ixs_dict['<eos>'] = 2
+
+            extra_tokens = len(word_ixs_dict)
+
+            for i, row in enumerate(data):
+                word_ixs_dict[row[0]] = (i + extra_tokens)
+
+    # word_ixs_dict = {
+    #     'the' : 0,
+    #     'new' : 1,
+    #     'spending' : 2,
+    #     'is' : 3,
+    #     'fueled' : 4,
+    #     'by' : 5,
+    #     'clinton' : 6,
+    #     "'s" : 7,
+    #     'large' : 8,
+    #     'bank' : 9,
+    #     'account' : 10,
+    #     '.' : 11,
+    #     '<sos>' : 12,
+    #     '<eos>' : 13
+    # }
 
     return word_ixs_dict
 
@@ -99,7 +122,12 @@ def onehot_rep(item, is_word=True):
 
     ixs_dict = word_ixs() if is_word else tag_ixs()
     onehot_list = [0] * len(ixs_dict)
-    onehot_list[ixs_dict[item]] = 1
+    if item in ixs_dict.keys():
+        onehot_list[ixs_dict[item]] = 1
+    else:
+        # If word is not in the vocabulary
+        # return UNK onehot encoding
+        onehot_list[ixs_dict['<UNK>']] = 1
 
     return onehot_list
 
@@ -183,32 +211,34 @@ def convert_tree_to_tensors(tree, device=torch.device('cpu')):
     
     ## CHANGED THIS FOR BREADTH FIRST INDEXING
     # _label_node_index(tree)
+    global global_n
+    global_n = 0
     _label_node_index_depth(tree)
 
     ## LABEL NODE'S LEVEL IN THE TREE
     _label_level_index(tree)
 
-    print('Indexed tree', tree)
+    # print('Indexed tree', tree)
 
     words = _gather_node_attributes(tree, 'word')
     # onehot_words = [onehot_rep(word) for word in words]
 
-    labels = _gather_node_attributes(tree, 'label', is_word=False)
+    # labels = _gather_node_attributes(tree, 'label', is_word=False)
     # onehot_labels = [onehot_rep(label, is_word=False) for label in labels]
     
     _gather_level_list(tree)
     levels = global_level_list
-    print('levels', levels)
+    # print('levels', levels)
 
     adjacency_list = _gather_adjacency_list(tree)
 
     node_order, edge_order = calculate_evaluation_orders(adjacency_list, len(words))
     has_children = np.array(node_order, dtype=bool)
-    print(f'has_children {has_children}')
+    # print(f'has_children {has_children}')
 
     return {
         'features': torch.tensor(words, device=device, dtype=torch.float32),
-        'labels': torch.tensor(labels, device=device, dtype=torch.float32),
+        # 'labels': torch.tensor(labels, device=device, dtype=torch.float32),
         'levels': torch.tensor(levels, device=device, dtype=torch.float32),
         'node_order': torch.tensor(node_order, device=device, dtype=torch.int64),
         'adjacency_list': torch.tensor(adjacency_list, device=device, dtype=torch.int64),
@@ -217,14 +247,20 @@ def convert_tree_to_tensors(tree, device=torch.device('cpu')):
 
 
 def list_to_index_tensor(in_list, device=torch.device('cpu')): 
-    index_list = [[word_ixs()[word]] for word in in_list]
+    index_list = [[word_ixs()[word]] if word in word_ixs().keys() else [0] for word in in_list]
     index_tensor = torch.tensor(index_list, device=device)#.unsqueeze(0)
     return index_tensor
 
 
+
+# nlp = spacy.load('en')
+spacy.prefer_gpu()
+nlp = spacy.load('en_core_web_sm', disable=['ner', 'textcat'])
+spacy_en = nlp
+
 ### From seq2seq.py
 ###
-spacy_en = spacy.load('en')
+# spacy_en = spacy.load('en')
 
 class Encoder(nn.Module):
     def __init__(self, input_dim, emb_dim, hid_dim, n_layers, dropout):
@@ -450,6 +486,9 @@ class Tree2Seq(nn.Module):
         #tensor to store decoder outputs
         outputs = torch.zeros(trg_len, batch_size, trg_vocab_size).to(self.device)
         
+        # print('############## TYPES ##############')
+        # print('features type', src_tree['features'].type())
+
         #last hidden state of the encoder is used as the initial hidden state of the decoder
         enc_hidden, enc_cell = self.encoder(
             src_tree['features'],
@@ -492,16 +531,14 @@ class Tree2Seq(nn.Module):
             #get the highest predicted token from our predictions
             top1 = output.argmax(1)
             
-            if i % 10 == 0:
-                print(f'top1 prediction: {ix_to_word(top1[0].item())} \t target: {ix_to_word(trg[t][0].item())}')
+            # if i % 10 == 0:
+            #     print(f'top1 prediction: {ix_to_word(top1[0].item())} \t target: {ix_to_word(trg[t][0].item())}')
             
             #if teacher forcing, use actual next token as next input
             #if not, use predicted token
             input = trg[t] if teacher_force else top1
 
         return outputs
-
-nlp = spacy.load('en')
 
 def text_to_json_tree(text):
     global nlp
@@ -553,73 +590,85 @@ def process_data(data, min_freq=2):
     return TEXT
 
 
+def load_data(dataset_path, device=torch.device('cpu')):
+    with open(dataset_path, 'r', encoding='utf-8') as d:
+        dataset = []
+        for line in d.readlines():
+            sample = json.loads(line)
+            # dataset.append(json.loads(line))
+            tree_tensor = convert_tree_to_tensors(sample['tree'], device=device)
+
+            target = ['<sos>']
+            target.extend(sample['seq'])
+            target.append('<eos>')
+            target_tensor = list_to_index_tensor(target, device=device)
+
+            dataset.append({'input': tree_tensor, 'target': target_tensor})
+    
+    return dataset
+
+
 if __name__ == '__main__':
     # SEND TO GPU IF AVAILABLE
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f'Running on device: {device}')
+    
+    if torch.cuda.is_available():
+        torch.set_default_tensor_type(torch.cuda.FloatTensor)
 
     # print('clinton', onehot_rep('clinton'))
     # print('VERB', onehot_rep('VERB', is_word=False))
 
-    sentence_1 = "the new spending is fueled by clinton's large bank account in the US" # ."
-    target = ['<sos>']
-    target.extend(tokenize(sentence_1))
-    target.append('<eos>')
+    # sentence_1 = "the new spending is fueled by clinton's large bank account in the US" # ."
+    # target = ['<sos>']
+    # target.extend(tokenize(sentence_1))
+    # target.append('<eos>')
     
-    sentence_2 = "I'll take it back there, he said, brightening, and she watched, with a little jealousy."
+    # sentence_2 = "I'll take it back there, he said, brightening, and she watched, with a little jealousy."
 
-    data = [sentence_1, sentence_2]
+    # data = [sentence_1, sentence_2]
 
-    DATA = process_data(data, min_freq=1)
+    # DATA = process_data(data, min_freq=1)
 
-    for sent in data:
-        dep_tree = text_to_json_tree(sent)
-        print('\n', dep_tree)
+    # for sent in data:
+    #     dep_tree = text_to_json_tree(sent)
+    #     print('\n', dep_tree)
 
-    exit()
+    dataset_path = 'data/bnc_sample.json'
+
+    # print('Dataset:=== ', dataset[0]['tree'])
 
     # print('target', target)
     # tokens = sentence.split(' ')
     # print(tokens)
 
-    dep_tree_text = {
-        'word': 'fueled', 'label': 'VERB', 'children' : [
-            {'word': 'spending', 'label': 'NOUN', 'children': [
-                {'word': 'the', 'label': 'DET', 'children': []},
-                {'word': 'new', 'label': 'ADJ', 'children': []}
-            ]},
-            {'word': 'is', 'label': 'AUX', 'children': []},
-            {'word': 'by', 'label': 'ADP', 'children': [
-                {'word': 'account', 'label': 'NOUN', 'children': [
-                    {'word': 'clinton', 'label': 'PROPN', 'children': [
-                        {'word': "'s", 'label': 'PART', 'children': []}
-                    ]},
-                    {'word': 'large', 'label': 'ADJ', 'children': []},
-                    {'word': 'bank', 'label': 'NOUN', 'children': []}
-                ]}
-            ]}
-        ]
-    }
+    # dep_tree_text = {
+    #     'word': 'fueled', 'label': 'VERB', 'children' : [
+    #         {'word': 'spending', 'label': 'NOUN', 'children': [
+    #             {'word': 'the', 'label': 'DET', 'children': []},
+    #             {'word': 'new', 'label': 'ADJ', 'children': []}
+    #         ]},
+    #         {'word': 'is', 'label': 'AUX', 'children': []},
+    #         {'word': 'by', 'label': 'ADP', 'children': [
+    #             {'word': 'account', 'label': 'NOUN', 'children': [
+    #                 {'word': 'clinton', 'label': 'PROPN', 'children': [
+    #                     {'word': "'s", 'label': 'PART', 'children': []}
+    #                 ]},
+    #                 {'word': 'large', 'label': 'ADJ', 'children': []},
+    #                 {'word': 'bank', 'label': 'NOUN', 'children': []}
+    #             ]}
+    #         ]}
+    #     ]
+    # }
 
-    # data = convert_tree_to_tensors(dep_tree_text)
-    data = convert_tree_to_tensors(dep_tree)
+    train_data_path = 'data/bnc_full_seqlist_deptree_SAMPLE_train.json'
+    val_data_path = 'data/bnc_full_seqlist_deptree_SAMPLE_val.json'
+    test_data_path = 'data/bnc_full_seqlist_deptree_SAMPLE_test.json'
 
-    # print('\n\n Data:', data)
-    # print('\n Data words:')
-    max_order = torch.max(data['node_order']).item()
-    # print('%$%%$$%$@W levels', data['levels'])
-    # for ix, word_tensor in enumerate(data['features']):
-    #     this_node_order = data['node_order'][ix].item()
-    #     # tabs = '\t' * (max_order - this_node_order)
+    train_data = load_data(train_data_path, device=device)
+    val_data = load_data(val_data_path, device=device)
+    test_data = load_data(test_data_path, device=device)
 
-    #     # this_node_level = data['levels'][ix].item()
-    #     tabs = '\t' * int(data['levels'][ix].item())
-
-    #     print(tabs, onehot_to_word(word_tensor), '\t --- node order --- ', this_node_order)
-    #     # print(torch.max(word_tensor, 0)[1])
-
-    # for ix, adj in enumerate(data['adjacency_list']):
-    #     print(adj[0].item(), '-', adj[1].item(), '\t --- adjacency order --- ', data['edge_order'][ix].item())
-    
     input_dim = len(word_ixs())
     output_dim = len(tag_ixs())
 
@@ -631,7 +680,7 @@ if __name__ == '__main__':
     N_LAYERS = 1
     ENC_DROPOUT = 0 #0.5
     DEC_DROPOUT = 0 #0.5
-    N_EPOCHS = 301
+    N_EPOCHS = 11
     
     encoder = TreeLSTM(input_dim, embedding_dim).train()
     decoder = Decoder(input_dim, embedding_dim, embedding_dim, N_LAYERS, DEC_DROPOUT).train()
@@ -651,44 +700,72 @@ if __name__ == '__main__':
     for n in range(N_EPOCHS):
         optimizer.zero_grad()
 
+        epoch_loss = 0.0
+
         # print('target', target)
-        target_tensor = list_to_index_tensor(target)
+        # target_tensor = list_to_index_tensor(target)
         # print('target tensor', target_tensor)
 
-        output = model(data, target_tensor, i=n)
-        
-        # print('output PRE', len(output), output.size())#[0].size(), output[1].size())
+        # Single datapoint batch
+        # TODO: process larger batches to speed up processing
+        for sample in train_data:
+            output = model(sample['input'], sample['target'], i=n)
+            
+            # print('output PRE', len(output), output.size())#[0].size(), output[1].size())
 
-        # seq2seq.py
-        ##
-        #trg = [trg len, batch size]
-        #output = [trg len, batch size, output dim]
-        output_dim = output.shape[-1]
-        
-        # "as the loss function only works on 2d inputs
-        # with 1d targets we need to flatten each of them
-        # with .view"
-        # "we slice off the first column of the output
-        # and target tensors (<sos>)"
-        output = output[1:].view(-1, output_dim)
-        target_tensor = target_tensor[1:].view(-1)
-        ##
-        ## /seq2seq.py
+            # seq2seq.py
+            ##
+            #trg = [trg len, batch size]
+            #output = [trg len, batch size, output dim]
+            output_dim = output.shape[-1]
+            
+            # "as the loss function only works on 2d inputs
+            # with 1d targets we need to flatten each of them
+            # with .view"
+            # "we slice off the first column of the output
+            # and target tensors (<sos>)"
+            output = output[1:].view(-1, output_dim)
+            target_tensor = sample['target'][1:].view(-1)
+            ##
+            ## /seq2seq.py
 
-        labels = data['labels']
-        
-        # loss = loss_function(h, labels)
-        # print('output', output_dim, len(output), output)#[0].size(), output[1].size())
+            # labels = data['labels']
+            
+            # loss = loss_function(h, labels)
+            # print('output', output_dim, len(output), output)#[0].size(), output[1].size())
 
-        loss = criterion(output, target_tensor)
-        loss.backward()
-        optimizer.step()
+            loss = criterion(output, target_tensor)
+            epoch_loss += loss.item()
+            loss.backward()
+            optimizer.step()
+
+        epoch_loss /= len(train_data)
 
         if not n % int(N_EPOCHS / 10):
-            print(f'Iteration {n+1} Loss: {loss}')
+            print(f'Iteration {n+1} Loss: {epoch_loss}')
             # print(f'output: {output}')
             # print('Dims h:', h.size(), ' c:', c.size())
-    # print(data)
+        
+        # VALIDATION
+        with torch.no_grad():
+            val_loss = 0.0
+
+            # Single datapoint batch
+            # TODO: process larger batches to speed up processing
+            for sample in val_data:
+                output = model(sample['input'], sample['target'], i=n)
+                output_dim = output.shape[-1]
+                
+                output = output[1:].view(-1, output_dim)
+                target_tensor = sample['target'][1:].view(-1)
+                
+                loss = criterion(output, target_tensor)
+                val_loss += loss.item()
+                
+            val_loss /= len(val_data)
+        
+        if not n % int(N_EPOCHS / 10):
+            print(f'Iteration {n+1} Loss: {epoch_loss} \t Validation loss: {val_loss}')
 
 '''
 "the new spending is fueled by clinton 's large bank account"

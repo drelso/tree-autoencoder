@@ -225,12 +225,19 @@ def process_all_datafiles(data_dir, dataset_savefile, tags_savefile=None, use_he
         full_path = data_dir + path
         if os.path.isdir(full_path):
             print('Opening ', full_path, 'directory')
-            files = os.listdir(full_path)
-            for file in files:
-                if file.endswith('.xml'):
-                    filepath = full_path + '/' + file
-                    print('Processing file', filepath)
-                    construct_dataset(filepath, dataset_savefile, tags_savefile=tags_savefile, use_headwords=use_headwords, include_heads=include_heads, replace_nums=replace_nums, replace_unclass=replace_unclass)
+            items = os.listdir(full_path)
+            print(f'Directory contains {len(items)} files')
+            for item in items:
+                dir_path = full_path + '/' + item
+                if item.endswith('.xml'):
+                    print('Processing file', dir_path)
+                    construct_dataset(dir_path, dataset_savefile, tags_savefile=tags_savefile, use_headwords=use_headwords, include_heads=include_heads, replace_nums=replace_nums, replace_unclass=replace_unclass)
+                elif os.path.isdir(dir_path):
+                    files = os.listdir(dir_path)
+                    for file in files:
+                        filepath = dir_path + '/' + file
+                        print('Processing file', filepath)
+                        construct_dataset(filepath, dataset_savefile, tags_savefile=tags_savefile, use_headwords=use_headwords, include_heads=include_heads, replace_nums=replace_nums, replace_unclass=replace_unclass)
 
 
 def get_stop_words():
@@ -747,6 +754,9 @@ def train_validate_split(clean_data_file, train_savefile, val_savefile, tags_dat
     proportion : float, optional
         proportion of training data to sample from
         the full dataset (default: 0.85)
+    
+    TODO:
+        - option for test set split
     """
     
     process_tags = tags_data_file and train_tags_savefile and val_tags_savefile
@@ -805,6 +815,104 @@ def train_validate_split(clean_data_file, train_savefile, val_savefile, tags_dat
             print('Writing validation tags to', val_tags_savefile)
             np.savetxt(val_tags_savefile, val_tags, fmt='%s', newline='')
         
+
+
+def train_validate_test_split(clean_data_file, train_savefile, val_savefile, test_savefile, tags_data_file=None, train_tags_savefile=None, val_tags_savefile=None, test_tags_savefile=None, proportion=[0.8,0.1,0.1]):
+    """
+    Splits and shuffles the raw data into a training,
+    a validation, and a test set according to a
+    specified proportion and saves each set to
+    a separate file
+    
+    Requirements
+    ------------
+    import numpy as np
+    
+    Parameters
+    ----------
+    clean_data_file : str
+        filepath to the clean text data (assumed
+        to be separated into lines)
+    train_savefile : str
+        filepath to the file to save the training
+        data to
+    val_savefile : str
+        filepath to the file to save the validation
+        data to
+    test_savefile : str
+        filepath to the file to save the test
+        data to
+    proportion : [float], optional
+        proportion of training, validation and
+        test data to sample from the full dataset
+        (default: [0.8, 0.1, 0.1])
+        NOTE: must add up to 1.0
+    """
+    
+    process_tags = tags_data_file and train_tags_savefile and val_tags_savefile and test_tags_savefile
+    
+    if process_tags:
+        tags_file = open(tags_data_file, 'r')
+    else:
+        print('No tags file, skipping')
+        tags_file = dummy_context_mgr()
+    
+    with open(clean_data_file, 'r', encoding='utf-8') as d, \
+        tags_file as td: #,\
+        
+        print('Train/Validate/Test split for', clean_data_file)
+        data = np.array(d.readlines())
+        data_size = data.shape[0]
+        print('Data length', data_size)
+        
+        indices = np.random.choice(data_size, data_size, replace=False)
+        num_train = int(proportion[0] * data_size)
+        num_validate = int(proportion[1] * data_size)
+        num_test = int(proportion[2] * data_size)
+        
+        print('Number of training examples:', num_train)
+        print('Number of validation examples:', num_validate)
+        print('Number of test examples:', num_test)
+        
+        train_data = data[indices[:num_train]]
+        val_data = data[indices[num_train:(num_train + num_validate)]]
+        test_data = data[indices[(num_train + num_validate):]]
+        
+        train_size = train_data.shape[0]
+        val_size = val_data.shape[0]
+        test_size = test_data.shape[0]
+        
+        print('Train size', train_size)
+        print('Val size', val_size)
+        print('Test size', test_size)
+        
+        print('Writing training set to', train_savefile)
+        print('\tNumber of training datapoints:', train_size)
+        np.savetxt(train_savefile, train_data, encoding='utf-8', fmt='%s', newline='')
+        print('Writing validation set to', val_savefile)
+        print('\tNumber of validation datapoints:', val_size)
+        np.savetxt(val_savefile, val_data, encoding='utf-8', fmt='%s', newline='')
+        print('Writing test set to', test_savefile)
+        print('\tNumber of test datapoints:', test_size)
+        np.savetxt(test_savefile, test_data, encoding='utf-8', fmt='%s', newline='')
+        
+        if process_tags:
+            tags = np.array(td.readlines())
+            tags_size = tags.shape[0]
+            print('Tags length', tags_size)
+        
+            if data_size != tags_size:
+                raise Exception('Data and tags sizes must match: %d != %d' % (data_size, tags_size))
+            
+            train_tags = tags[indices[:num_train]]
+            val_tags = tags[indices[num_train:(num_train + num_validate)]]
+            test_tags = tags[indices[(num_train + num_validate):]]
+
+            print('Writing training tags to', train_tags_savefile)
+            np.savetxt(train_tags_savefile, train_tags, fmt='%s', newline='')
+            print('Writing validation tags to', val_tags_savefile)
+            np.savetxt(val_tags_savefile, val_tags, fmt='%s', newline='')
+
         
 # USED TO PRODUCE THE DATA FOR THE FIRST MODEL:
 # rand_init-no_syns-10e-voc1-emb300
