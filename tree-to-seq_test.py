@@ -531,8 +531,8 @@ class Tree2Seq(nn.Module):
             #get the highest predicted token from our predictions
             top1 = output.argmax(1)
             
-            # if i % 10 == 0:
-            #     print(f'top1 prediction: {ix_to_word(top1[0].item())} \t target: {ix_to_word(trg[t][0].item())}')
+            if i % 10 == 0:
+                print(f'top1 prediction: {ix_to_word(top1[0].item())} \t target: {ix_to_word(trg[t][0].item())}')
             
             #if teacher forcing, use actual next token as next input
             #if not, use predicted token
@@ -672,7 +672,8 @@ if __name__ == '__main__':
     input_dim = len(word_ixs())
     output_dim = len(tag_ixs())
 
-    embedding_dim = 20
+    embedding_dim = 20 # Hidden unit dimension
+    word_emb_dim = 50 
 
     # SEQ2SEQ TRAINING
     DEC_EMB_DIM = 256
@@ -680,9 +681,10 @@ if __name__ == '__main__':
     N_LAYERS = 1
     ENC_DROPOUT = 0 #0.5
     DEC_DROPOUT = 0 #0.5
-    N_EPOCHS = 11
+    N_EPOCHS = 101
+
     
-    encoder = TreeLSTM(input_dim, embedding_dim).train()
+    encoder = TreeLSTM(input_dim, embedding_dim, word_emb_dim).train()
     decoder = Decoder(input_dim, embedding_dim, embedding_dim, N_LAYERS, DEC_DROPOUT).train()
 
     model = Tree2Seq(encoder, decoder, device).train()

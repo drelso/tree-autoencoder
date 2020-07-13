@@ -10,7 +10,7 @@ import torch
 class TreeLSTM(torch.nn.Module):
     '''PyTorch TreeLSTM model that implements efficient batching.
     '''
-    def __init__(self, in_features, out_features):
+    def __init__(self, in_features, out_features, word_emb_dim):
         '''TreeLSTM class initializer
 
         Takes in int sizes of in_features and out_features and sets up model Linear network layers.
@@ -18,15 +18,27 @@ class TreeLSTM(torch.nn.Module):
         super().__init__()
         self.in_features = in_features
         self.out_features = out_features
+        self.word_emb_dim = word_emb_dim
+
+        # @DR
+        self.word_embedding = torch.nn.Embedding(in_features, word_emb_dim)
 
         # bias terms are only on the W layers for efficiency
-        self.W_iou = torch.nn.Linear(self.in_features, 3 * self.out_features)
+        ## UNCOMMENT FOR ORIGINAL IMPLEMENTATION
+        # self.W_iou = torch.nn.Linear(self.in_features, 3 * self.out_features)
+        # @DR
+        self.W_iou = torch.nn.Linear(self.word_emb_dim, 3 * self.out_features)
         self.U_iou = torch.nn.Linear(self.out_features, 3 * self.out_features, bias=False)
 
         # f terms are maintained seperate from the iou terms because they involve sums over child nodes
         # while the iou terms do not
-        self.W_f = torch.nn.Linear(self.in_features, self.out_features)
+        ## UNCOMMENT FOR ORIGINAL IMPLEMENTATION
+        # self.W_f = torch.nn.Linear(self.in_features, self.out_features)
+        # @DR
+        self.W_f = torch.nn.Linear(self.word_emb_dim, self.out_features)
         self.U_f = torch.nn.Linear(self.out_features, self.out_features, bias=False)
+        print(f'W_f size {self.word_emb_dim}x{self.out_features}')
+        print(f'U_f size {self.out_features}x{self.out_features}')
 
     def forward(self, features, node_order, adjacency_list, edge_order):
         '''Run TreeLSTM model on a tree data structure with node features
@@ -76,11 +88,23 @@ class TreeLSTM(torch.nn.Module):
         edge_mask = edge_order == iteration
 
         # x is a tensor of size n x F
-        print('+++++++++++++++ Features argmax ', torch.argmax(features[node_mask, :], dim=1))
-        x = features[node_mask, :]
+        # print('+++++++++++++++ Features argmax ', torch.argmax(features[node_mask, :], dim=1))
+        ## UNCOMMENT FOR ORIGINAL IMPLEMENTATION
+        # x = features[node_mask, :]
+
+        # @DR
+        # DIMENSIONALITY FIX, IF features[parent_indexes, :] HAS
+        # A SINGLE EXAMPLE TAKE THE GLOBAL ARGMAX AND UNSQUEEZE,
+        # ELSE GET THE ARGMAX FROM EACH EXAMPLE
+        if features[node_mask, :].size()[0] == 1:
+            x = self.word_embedding(torch.argmax(features[node_mask, :])).unsqueeze(0)
+        else:
+            # print('@@@ features[node_mask, :].size()[0] larger than 1')
+            # print(f'torch.argmax(features[node_mask, :]) {torch.argmax(features[node_mask, :], dim=1)}')
+            x = self.word_embedding(torch.argmax(features[node_mask, :], dim=1))
 
         # print(f'iteration: {iteration} \n \t node mask: {node_mask} \t x: {x}')
-        print(f'x length {x.size()}')
+        # print(f'x length {x.size()}')
 
         # At iteration 0 none of the nodes should have children
         # Otherwise, select the child nodes needed for current iteration
@@ -133,7 +157,23 @@ class TreeLSTM(torch.nn.Module):
             c[node_mask, :] = i * u
         else:
             # f is a tensor of size e x M
-            f = self.W_f(features[parent_indexes, :]) + self.U_f(child_h)
+            # print('features[parent_indexes, :].size()', features[parent_indexes, :].size())
+            # print('child_h.size()', child_h.size())
+            # f = self.W_f(features[parent_indexes, :]) + self.U_f(child_h)
+            # print(f'features[parent_indexes, :] {features[parent_indexes, :]}')
+            # print(f'torch.argmax(features[parent_indexes, :]) {torch.argmax(features[parent_indexes, :], dim=1)}')
+
+            # @DR
+            # DIMENSIONALITY FIX, IF features[parent_indexes, :] HAS
+            # A SINGLE EXAMPLE TAKE THE GLOBAL ARGMAX AND UNSQUEEZE,
+            # ELSE GET THE ARGMAX FROM EACH EXAMPLE
+            if features[parent_indexes, :].size()[0] == 1:
+                x_parents = self.word_embedding(torch.argmax(features[parent_indexes, :])).unsqueeze(0)
+            else:
+                x_parents = self.word_embedding(torch.argmax(features[parent_indexes, :], dim=1))
+            # print('x_parents type', x_parents.type())
+            # print('x_parents', x_parents)
+            f = self.W_f(x_parents) + self.U_f(child_h)
             f = torch.sigmoid(f)
 
             # fc is a tensor of size e x M
