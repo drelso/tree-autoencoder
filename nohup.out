@@ -1,7 +1,33 @@
-Home directory: /home/diegor
-Reading data in /home/diegor/data/British_National_Corpus/bnc_full_processed_data/bnc_full_proc_data.txt
-Data size: 4384306
-Home directory: /home/diegor
-Reading data in /home/diegor/data/British_National_Corpus/bnc_full_processed_data/bnc_full_proc_data.txt
-Data size: 4384306
-0 sentences processed
+##################################################### DATASET SPLIT
+
+Running train/validate/test split: 
+ data/bnc_full_seqlist_deptree_train.json  
+ data/bnc_full_seqlist_deptree_val.json 
+ data/bnc_full_seqlist_deptree_test.json
+Dataset splitting started...
+No tags file, skipping
+Train/Validate/Test split for data/bnc_full_seqlist_deptree.json
+Data length 4384306
+First sample in dataset {"seq": ["inheritance", "has", "been", "the", "subject", "of", "some", "of", "the", "most", "important", "scientific", "discoveries", "of", "the", "past", "century"], "tree": {"word": "been", "label": "AUX", "children": [{"word": "inheritance", "label": "NOUN", "children": []}, {"word": "has", "label": "AUX", "children": []}, {"word": "subject", "label": "NOUN", "children": [{"word": "the", "label": "DET", "children": []}, {"word": "of", "label": "ADP", "children": [{"word": "some", "label": "DET", "children": [{"word": "of", "label": "ADP", "children": [{"word": "discoveries", "label": "NOUN", "children": [{"word": "the", "label": "DET", "children": []}, {"word": "important", "label": "ADJ", "children": [{"word": "most", "label": "ADV", "children": []}]}, {"word": "scientific", "label": "ADJ", "children": []}, {"word": "of", "label": "ADP", "children": [{"word": "century", "label": "NOUN", "children": [{"word": "the", "label": "DET", "children": []}, {"word": "past", "label": "ADJ", "children": []}]}]}]}]}]}]}]}]}}
+
+11111 Process meminfo -> Available: 31939 MB 	 Used: 4478.6484375 MB
+22222 Process meminfo -> Available: 31939 MB 	 Used: 4512.23828125 MB
+Number of training examples: 3507444
+Number of validation examples: 438430
+Number of test examples: 438430
+33333 Process meminfo -> Available: 31939 MB 	 Used: 4539.609375 MB
+44444 Process meminfo -> Available: 31939 MB 	 Used: 4546.3125 MB
+Train size 3507444
+Val size 438430
+Test size 438432
+Writing training set to data/bnc_full_seqlist_deptree_train.json
+	Number of training datapoints: 3507444
+Writing validation set to data/bnc_full_seqlist_deptree_val.json
+	Number of validation datapoints: 438430
+Writing test set to data/bnc_full_seqlist_deptree_test.json
+	Number of test datapoints: 438432
+
+
+
+###################################################### TIMING TESTS (load_data())
+

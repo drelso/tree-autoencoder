@@ -14,6 +14,7 @@
 import random
 import json
 import csv
+import time
 import numpy as np
 
 import torch
@@ -34,69 +35,67 @@ from model.tree2seq import Tree2Seq
 
 
 if __name__ == '__main__':
+    parameters = {}
+
     # SEND TO GPU IF AVAILABLE
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f'Running on device: {device}')
-    
+    parameters['device'] = device
+
     if torch.cuda.is_available():
         torch.set_default_tensor_type(torch.cuda.FloatTensor)
-
-    # print('clinton', onehot_rep('clinton'))
-    # print('VERB', onehot_rep('VERB', is_word=False))
-
-    # sentence_1 = "the new spending is fueled by clinton's large bank account in the US" # ."
-    # target = ['<sos>']
-    # target.extend(tokenize(sentence_1))
-    # target.append('<eos>')
-    
-    # sentence_2 = "I'll take it back there, he said, brightening, and she watched, with a little jealousy."
-
-    # data = [sentence_1, sentence_2]
-
-    # DATA = process_data(data, min_freq=1)
+        parameters['cuda'] = True
+    else:
+        parameters['cuda'] = False
 
     # for sent in data:
     #     dep_tree = text_to_json_tree(sent)
     #     print('\n', dep_tree)
 
-    dataset_path = 'data/bnc_sample.json'
+    dataset_dir = 'data/'
+    # dataset_name = 'bnc_sample' ## TOY EXAMPLE (11 SAMPLES)
+    dataset_name = 'bnc_full_seqlist_deptree'
 
-    # print('Dataset:=== ', dataset[0]['tree'])
+    dataset_path = dataset_dir + dataset_name + '.json'
+    parameters['dataset_path'] = dataset_path
 
-    # print('target', target)
-    # tokens = sentence.split(' ')
-    # print(tokens)
+    vocab_dir = dataset_dir
+    vocab_cutoff = 1
+    vocab_path = vocab_dir + 'vocab-' + str(vocab_cutoff) + '_' + dataset_name + '.csv'
+    parameters['vocab_path'] = vocab_path
 
-    # dep_tree_text = {
-    #     'word': 'fueled', 'label': 'VERB', 'children' : [
-    #         {'word': 'spending', 'label': 'NOUN', 'children': [
-    #             {'word': 'the', 'label': 'DET', 'children': []},
-    #             {'word': 'new', 'label': 'ADJ', 'children': []}
-    #         ]},
-    #         {'word': 'is', 'label': 'AUX', 'children': []},
-    #         {'word': 'by', 'label': 'ADP', 'children': [
-    #             {'word': 'account', 'label': 'NOUN', 'children': [
-    #                 {'word': 'clinton', 'label': 'PROPN', 'children': [
-    #                     {'word': "'s", 'label': 'PART', 'children': []}
-    #                 ]},
-    #                 {'word': 'large', 'label': 'ADJ', 'children': []},
-    #                 {'word': 'bank', 'label': 'NOUN', 'children': []}
-    #             ]}
-    #         ]}
-    #     ]
-    # }
-
-    
-    vocab_path = 'data/vocab_bnc_full_seqlist_deptree_SAMPLE.csv'
     word_ixs_dict = word_ixs(vocab_path)
 
-    train_data_path = 'data/bnc_full_seqlist_deptree_SAMPLE_train.json'
-    val_data_path = 'data/bnc_full_seqlist_deptree_SAMPLE_val.json'
-    test_data_path = 'data/bnc_full_seqlist_deptree_SAMPLE_test.json'
+    # test_data_path = 'data/bnc_full_seqlist_deptree_SAMPLE_test.json' ## OLD PATH
+    train_data_path = dataset_dir + dataset_name + '_train.json'
+    val_data_path = dataset_dir + dataset_name + '_val.json'
+    test_data_path = dataset_dir + dataset_name + '_test.json'
+    
+    parameters['train_data_path'] = dataset_path
+    parameters['val_data_path'] = dataset_path
+    parameters['test_data_path'] = dataset_path
 
-    train_data = load_data(train_data_path, word_ixs_dict, device=device)
-    val_data = load_data(val_data_path, word_ixs_dict, device=device)
-    test_data = load_data(test_data_path, word_ixs_dict, device=device)
+    onehot_features = False
+    parameters['onehot_features'] = onehot_features
+
+    # train_data = load_data(train_data_path, word_ixs_dict, device=device)
+    # val_data = load_data(val_data_path, word_ixs_dict, device=device)
+    # test_data = load_data(test_data_path, word_ixs_dict, device=device)
+
+    ## PRINT PARAMETERS
+    print('=================== MODEL PARAMETERS: =================== \n')
+    for name, value in parameters.items():
+        print(f'{name}: \t {value}')
+    print('=================== / MODEL PARAMETERS: =================== \n')
+    
+
+    ## TIMING TESTS
+    start_time = time.time()
+    test_data = load_data(test_data_path, word_ixs_dict, device=device, onehot_features=onehot_features)
+    elapsed_time = time.time() - start_time
+    print('\nTotal elapsed time: ', elapsed_time)
+    exit()
+    ## / TIMING TESTS
 
     input_dim = len(word_ixs_dict)#word_ixs())
     # output_dim = len(tag_ixs())
@@ -111,7 +110,6 @@ if __name__ == '__main__':
     ENC_DROPOUT = 0 #0.5
     DEC_DROPOUT = 0 #0.5
     N_EPOCHS = 101
-
     
     encoder = TreeLSTM(input_dim, embedding_dim, word_emb_dim).train()
     decoder = Decoder(input_dim, embedding_dim, embedding_dim, N_LAYERS, DEC_DROPOUT).train()
@@ -227,5 +225,26 @@ dep_tree = {
             ]},
         ],
     }
+'''
+
+'''
+dep_tree_text = {
+    'word': 'fueled', 'label': 'VERB', 'children' : [
+        {'word': 'spending', 'label': 'NOUN', 'children': [
+            {'word': 'the', 'label': 'DET', 'children': []},
+            {'word': 'new', 'label': 'ADJ', 'children': []}
+        ]},
+        {'word': 'is', 'label': 'AUX', 'children': []},
+        {'word': 'by', 'label': 'ADP', 'children': [
+            {'word': 'account', 'label': 'NOUN', 'children': [
+                {'word': 'clinton', 'label': 'PROPN', 'children': [
+                    {'word': "'s", 'label': 'PART', 'children': []}
+                ]},
+                {'word': 'large', 'label': 'ADJ', 'children': []},
+                {'word': 'bank', 'label': 'NOUN', 'children': []}
+            ]}
+        ]}
+    ]
+}
 '''
 # node_order, edge_order = treelstm.calculate_evaluation_orders(adjacency_list, len(features))

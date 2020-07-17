@@ -22,20 +22,24 @@ spacy.prefer_gpu()
 nlp = spacy.load('en_core_web_sm', disable=['ner', 'textcat'])
 
 
-def load_data(dataset_path, word_ixs_dict, device=torch.device('cpu')):
+def load_data(dataset_path, word_ixs_dict, device=torch.device('cpu'), onehot_features=True):
     with open(dataset_path, 'r', encoding='utf-8') as d:
         dataset = []
         for line in d.readlines():
             sample = json.loads(line)
-            # dataset.append(json.loads(line))
-            tree_tensor = convert_tree_to_tensors(sample['tree'], word_ixs_dict, device=device)
-
-            target = ['<sos>']
-            target.extend(sample['seq'])
-            target.append('<eos>')
-            target_tensor = list_to_index_tensor(target, word_ixs_dict, device=device)
-
-            dataset.append({'input': tree_tensor, 'target': target_tensor})
+            
+            # @DR: IGNORE SINGLE-WORD SENTENCES AND SINGLE-NODE TREES
+            #      AS THEY CANNOT BE CORRECTLY PROCESSED AS TREE DATA
+            if len(sample['seq']) > 1 and len(sample['tree']['children']) > 0:
+                # dataset.append(json.loads(line))
+                tree_tensor = convert_tree_to_tensors(sample['tree'], word_ixs_dict, device=device, onehot_features=onehot_features)
+                
+                target = ['<sos>']
+                target.extend(sample['seq'])
+                target.append('<eos>')
+                target_tensor = list_to_index_tensor(target, word_ixs_dict, device=device)
+                
+                dataset.append({'input': tree_tensor, 'target': target_tensor})
     
     return dataset
 
@@ -120,6 +124,13 @@ def onehot_rep(item, word_ixs_dict, is_word=True):
     return onehot_list
 
 
+def word_ix_rep(item, word_ixs_dict):
+    if item in word_ixs_dict.keys():
+        return word_ixs_dict[item]
+    else:
+        return word_ixs_dict['<UNK>']
+
+
 def list_to_index_tensor(in_list, word_ixs_dict, device=torch.device('cpu')): 
     index_list = [[word_ixs_dict[word]] if word in word_ixs_dict.keys() else [0] for word in in_list]
     index_tensor = torch.tensor(index_list, device=device)#.unsqueeze(0)
@@ -142,7 +153,6 @@ def _label_node_index_depth(node):
     else:
         node['has_children'] = False
 
-    print(node['word'], global_n)
     for i, child in enumerate(node['children']):
         global_n += 1
 
@@ -182,10 +192,14 @@ def _label_level_index(node, n=0):
         _label_level_index(child, n)
 
 
-def _gather_node_attributes(node, key,  word_ixs_dict, is_word=True):
-    features = [onehot_rep(node[key], word_ixs_dict, is_word=is_word)]
+def _gather_node_attributes(node, key,  word_ixs_dict, is_word=True, onehot_features=True):
+    if onehot_features:
+        features = [onehot_rep(node[key], word_ixs_dict, is_word=is_word)]
+    else:
+        features = [word_ix_rep(node[key], word_ixs_dict)]
+    
     for child in node['children']:
-        features.extend(_gather_node_attributes(child, key, word_ixs_dict, is_word=is_word))
+        features.extend(_gather_node_attributes(child, key, word_ixs_dict, is_word=is_word, onehot_features=onehot_features))
     return features
 
 
@@ -198,7 +212,7 @@ def _gather_adjacency_list(node):
     return adjacency_list
 
 
-def convert_tree_to_tensors(tree, word_ixs_dict, device=torch.device('cpu')):
+def convert_tree_to_tensors(tree, word_ixs_dict, device=torch.device('cpu'), onehot_features=True):
     # Label each node with its walk order to match nodes to feature tensor indexes
     # This modifies the original tree as a side effect
     
@@ -213,7 +227,8 @@ def convert_tree_to_tensors(tree, word_ixs_dict, device=torch.device('cpu')):
 
     # print('Indexed tree', tree)
 
-    words = _gather_node_attributes(tree, 'word',  word_ixs_dict)
+    words = _gather_node_attributes(tree, 'word',  word_ixs_dict, onehot_features=onehot_features)
+    
     # onehot_words = [onehot_rep(word) for word in words]
 
     # labels = _gather_node_attributes(tree, 'label', is_word=False)
@@ -230,7 +245,7 @@ def convert_tree_to_tensors(tree, word_ixs_dict, device=torch.device('cpu')):
     # print(f'has_children {has_children}')
 
     return {
-        'features': torch.tensor(words, device=device, dtype=torch.float32),
+        'features': torch.tensor(words, device=device, dtype=torch.int),
         # 'labels': torch.tensor(labels, device=device, dtype=torch.float32),
         'levels': torch.tensor(levels, device=device, dtype=torch.float32),
         'node_order': torch.tensor(node_order, device=device, dtype=torch.int64),

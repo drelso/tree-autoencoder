@@ -5,6 +5,10 @@
 ###
 
 import os
+import sys
+
+import psutil
+
 import xml.etree.ElementTree as ET
 from collections import Counter
 import csv
@@ -849,69 +853,136 @@ def train_validate_test_split(clean_data_file, train_savefile, val_savefile, tes
         NOTE: must add up to 1.0
     """
     
+    print('Dataset splitting started...')
+
+
+    # memory = psutil.virtual_memory()
+    # memory_gigs = memory.total >> 20
+    # mem = psutil.Process().memory_info()[0] / float(2 ** 20)
+    # print(f'11111 Process meminfo -> Available: {memory_gigs} MB \t Used: {mem} MB')
+    # sys.stdout.flush()
+
     process_tags = tags_data_file and train_tags_savefile and val_tags_savefile and test_tags_savefile
-    
+
     if process_tags:
         tags_file = open(tags_data_file, 'r')
+        print(f'File size for {tags_data_file} \t {os.path.getsize(tags_data_file)}')
     else:
         print('No tags file, skipping')
         tags_file = dummy_context_mgr()
-    
+        
+    sys.stdout.flush()
+
+    # memory = psutil.virtual_memory()
+    # memory_gigs = memory.total >> 20
+    # mem = psutil.Process().memory_info()[0] / float(2 ** 20)
+    # print(f'22222 Process meminfo -> Available: {memory_gigs} MB \t Used: {mem} MB')
+    # sys.stdout.flush()
+
     with open(clean_data_file, 'r', encoding='utf-8') as d, \
         tags_file as td: #,\
         
         print('Train/Validate/Test split for', clean_data_file)
-        data = np.array(d.readlines())
-        data_size = data.shape[0]
-        print('Data length', data_size)
-        
-        indices = np.random.choice(data_size, data_size, replace=False)
-        num_train = int(proportion[0] * data_size)
-        num_validate = int(proportion[1] * data_size)
-        num_test = int(proportion[2] * data_size)
-        
-        print('Number of training examples:', num_train)
-        print('Number of validation examples:', num_validate)
-        print('Number of test examples:', num_test)
-        
-        train_data = data[indices[:num_train]]
-        val_data = data[indices[num_train:(num_train + num_validate)]]
-        test_data = data[indices[(num_train + num_validate):]]
-        
-        train_size = train_data.shape[0]
-        val_size = val_data.shape[0]
-        test_size = test_data.shape[0]
-        
-        print('Train size', train_size)
-        print('Val size', val_size)
-        print('Test size', test_size)
-        
-        print('Writing training set to', train_savefile)
-        print('\tNumber of training datapoints:', train_size)
-        np.savetxt(train_savefile, train_data, encoding='utf-8', fmt='%s', newline='')
-        print('Writing validation set to', val_savefile)
-        print('\tNumber of validation datapoints:', val_size)
-        np.savetxt(val_savefile, val_data, encoding='utf-8', fmt='%s', newline='')
-        print('Writing test set to', test_savefile)
-        print('\tNumber of test datapoints:', test_size)
-        np.savetxt(test_savefile, test_data, encoding='utf-8', fmt='%s', newline='')
-        
-        if process_tags:
-            tags = np.array(td.readlines())
-            tags_size = tags.shape[0]
-            print('Tags length', tags_size)
-        
-            if data_size != tags_size:
-                raise Exception('Data and tags sizes must match: %d != %d' % (data_size, tags_size))
-            
-            train_tags = tags[indices[:num_train]]
-            val_tags = tags[indices[num_train:(num_train + num_validate)]]
-            test_tags = tags[indices[(num_train + num_validate):]]
+        data = [line for line in d]
+        # data = np.array(d.readlines()) # MEMORY-INTENSIVE
 
-            print('Writing training tags to', train_tags_savefile)
-            np.savetxt(train_tags_savefile, train_tags, fmt='%s', newline='')
-            print('Writing validation tags to', val_tags_savefile)
-            np.savetxt(val_tags_savefile, val_tags, fmt='%s', newline='')
+    # data_size = data.shape[0]
+    data_size = len(data)
+    print('Data length', data_size)
+    print(f'First sample in dataset {data[0]}')
+    
+    memory = psutil.virtual_memory()
+    memory_gigs = memory.total >> 20
+    mem = psutil.Process().memory_info()[0] / float(2 ** 20)
+    print(f'11111 Process meminfo -> Available: {memory_gigs} MB \t Used: {mem} MB')
+    sys.stdout.flush()
+    # exit()
+    
+    indices = np.random.choice(data_size, data_size, replace=False)
+    num_train = int(proportion[0] * data_size)
+    num_validate = int(proportion[1] * data_size)
+    num_test = int(proportion[2] * data_size)
+    
+
+    memory = psutil.virtual_memory()
+    memory_gigs = memory.total >> 20
+    mem = psutil.Process().memory_info()[0] / float(2 ** 20)
+    print(f'22222 Process meminfo -> Available: {memory_gigs} MB \t Used: {mem} MB')
+    sys.stdout.flush()
+    # exit()
+
+    print('Number of training examples:', num_train)
+    print('Number of validation examples:', num_validate)
+    print('Number of test examples:', num_test)
+    
+    # train_data = data[indices[:num_train]]
+    # val_data = data[indices[num_train:(num_train + num_validate)]]
+    # test_data = data[indices[(num_train + num_validate):]]
+    
+    # Changed indexing to Python lists instead of NumPy arrays
+    # (copying data to NumPy arrays requires a lot of additional memory)
+    train_data = [data[i] for i in indices[:num_train]]
+    
+    val_data = [data[i] for i in indices[num_train:(num_train + num_validate)]]
+    test_data = [data[i] for i in indices[(num_train + num_validate):]]
+    
+    memory = psutil.virtual_memory()
+    memory_gigs = memory.total >> 20
+    mem = psutil.Process().memory_info()[0] / float(2 ** 20)
+    print(f'44444 Process meminfo -> Available: {memory_gigs} MB \t Used: {mem} MB')
+    sys.stdout.flush()
+    # exit()
+
+    # train_size = train_data.shape[0]
+    # val_size = val_data.shape[0]
+    # test_size = test_data.shape[0]
+
+    train_size = len(train_data)
+    val_size = len(val_data)
+    test_size = len(test_data)
+    
+    print('Train size', train_size)
+    print('Val size', val_size)
+    print('Test size', test_size)
+    
+    print('Writing training set to', train_savefile)
+    print('\tNumber of training datapoints:', train_size)
+    # np.savetxt(train_savefile, train_data, encoding='utf-8', fmt='%s', newline='')
+    ## CHANGED WRITING TO PYTHON LIST DUE TO MEMORY USAGE IN NP.SAVETXT
+    with open(train_savefile, 'w+', encoding='utf-8') as s:
+        s.writelines(train_data)
+        del train_data
+    
+    print('Writing validation set to', val_savefile)
+    print('\tNumber of validation datapoints:', val_size)
+    # np.savetxt(val_savefile, val_data, encoding='utf-8', fmt='%s', newline='')
+    with open(val_savefile, 'w+', encoding='utf-8') as s:
+        s.writelines(val_data)
+        del val_data
+
+    print('Writing test set to', test_savefile)
+    print('\tNumber of test datapoints:', test_size)
+    # np.savetxt(test_savefile, test_data, encoding='utf-8', fmt='%s', newline='')
+    with open(test_savefile, 'w+', encoding='utf-8') as s:
+        s.writelines(test_data)
+        del test_data
+    
+    if process_tags:
+        tags = np.array(td.readlines())
+        tags_size = tags.shape[0]
+        print('Tags length', tags_size)
+    
+        if data_size != tags_size:
+            raise Exception('Data and tags sizes must match: %d != %d' % (data_size, tags_size))
+        
+        train_tags = tags[indices[:num_train]]
+        val_tags = tags[indices[num_train:(num_train + num_validate)]]
+        test_tags = tags[indices[(num_train + num_validate):]]
+
+        print('Writing training tags to', train_tags_savefile)
+        np.savetxt(train_tags_savefile, train_tags, fmt='%s', newline='')
+        print('Writing validation tags to', val_tags_savefile)
+        np.savetxt(val_tags_savefile, val_tags, fmt='%s', newline='')
 
         
 # USED TO PRODUCE THE DATA FOR THE FIRST MODEL:
