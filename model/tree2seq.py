@@ -11,7 +11,7 @@ import random
 # from .utils.tree_utils import ix_to_word
 
 class Tree2Seq(nn.Module):
-    def __init__(self, encoder, decoder, device, word_ixs_dict):
+    def __init__(self, encoder, decoder, device, vocabulary):
         super().__init__()
         
         self.encoder = encoder
@@ -19,10 +19,10 @@ class Tree2Seq(nn.Module):
         self.device = device
 
         # @DR JUST USED TO PRINT PREDICTIONS
-        self.word_ixs_dict = word_ixs_dict
+        # torchtext.vocab object
+        self.vocabulary = vocabulary
         
     def forward(self, src_tree, trg, teacher_forcing_ratio = 0.5, i=0):
-        
         #src = [src len, batch size]
         #trg = [trg len, batch size]
         #teacher_forcing_ratio is probability to use teacher forcing
@@ -31,10 +31,16 @@ class Tree2Seq(nn.Module):
         batch_size = trg.shape[1]
         trg_len = trg.shape[0]
         trg_vocab_size = self.decoder.output_dim
+
+        print(f'batch_size {batch_size}')
+        print(f'trg_len {trg_len}')
+        print(f'trg_vocab_size { trg_vocab_size}')
         
         #tensor to store decoder outputs
         outputs = torch.zeros(trg_len, batch_size, trg_vocab_size).to(self.device)
         
+        print(f'outputs ******** \n {outputs}')
+
         # print('############## TYPES ##############')
         # print('features type', src_tree['features'].type())
 
@@ -48,10 +54,16 @@ class Tree2Seq(nn.Module):
         #first input to the decoder is the <sos> tokens
         input = trg[0,:]
         
+        print(f'enc_hidden size: {enc_hidden.size()}')
+        print(f'enc_cell size: {enc_cell.size()}')
+
         ## MODIFICATION: TAKE ONLY THE ROOT EMBEDDING AND CELL
         dec_hidden = enc_hidden[0].unsqueeze(0).unsqueeze(0)
         dec_cell = enc_cell[0].unsqueeze(0).unsqueeze(0)
         
+        print(f'dec_hidden size: {dec_hidden.size()}')
+        print(f'dec_cell size: {dec_cell.size()}')
+
         if i % 10 == 0:
             print(f'epoch number {i}')
 
@@ -73,8 +85,8 @@ class Tree2Seq(nn.Module):
             #get the highest predicted token from our predictions
             top1 = output.argmax(1)
             
-            if i % 10 == 0:
-                print(f'top1 prediction: {ix_to_word(top1[0].item(), self.word_ixs_dict)} \t target: {ix_to_word(trg[t][0].item(), self.word_ixs_dict)}')
+            # if i % 10 == 0:
+            print(f'top1 prediction: {self.vocabulary.itos[top1[0].item()]} \t target: {self.vocabulary.itos[trg[t][0].item()]}')
             
             #if teacher forcing, use actual next token as next input
             #if not, use predicted token
@@ -82,8 +94,8 @@ class Tree2Seq(nn.Module):
 
         return outputs
 
-def ix_to_word(ix, word_ixs_dict):
-    for w, i in word_ixs_dict.items():
-        if i == ix:
-            return w    
-    return 'word not found'
+# def ix_to_word(ix, word_ixs_dict):
+#     for w, i in word_ixs_dict.items():
+#         if i == ix:
+#             return w    
+#     return 'word not found'

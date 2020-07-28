@@ -29,5 +29,96 @@ Writing test set to data/bnc_full_seqlist_deptree_test.json
 
 
 
-###################################################### TIMING TESTS (load_data())
+###################################################### NUMERICALISING FULL DATASET (numericalise_dataset())
 
+Running on device: cuda
+Constructing vocabulary from counts file in data/counts_bnc_full_seqlist_deptree.csv
+385907 unique tokens in vocabulary with (with minimum frequency 1
+
+=================== MODEL PARAMETERS: =================== 
+
+device: 	 cuda
+cuda: 	 True
+dataset_path: 	 data/bnc_full_seqlist_deptree.json
+counts_file: 	 data/counts_bnc_full_seqlist_deptree.csv
+vocab_cutoff: 	 1
+train_data_path: 	 data/bnc_full_seqlist_deptree.json
+val_data_path: 	 data/bnc_full_seqlist_deptree.json
+test_data_path: 	 data/bnc_full_seqlist_deptree.json
+onehot_features: 	 False
+num_data_save_path: 	 data/bnc_full_seqlist_deptree_numeric_voc-1.json
+
+=================== / MODEL PARAMETERS: =================== 
+
+Writing numericalised dataset to data/bnc_full_seqlist_deptree_numeric_voc-1.json
+100000 lines written
+200000 lines written
+300000 lines written
+400000 lines written
+500000 lines written
+600000 lines written
+700000 lines written
+800000 lines written
+900000 lines written
+1000000 lines written
+1100000 lines written
+1200000 lines written
+1300000 lines written
+1400000 lines written
+1500000 lines written
+1600000 lines written
+1700000 lines written
+1800000 lines written
+1900000 lines written
+2000000 lines written
+2100000 lines written
+2200000 lines written
+2300000 lines written
+2400000 lines written
+2500000 lines written
+2600000 lines written
+2700000 lines written
+2800000 lines written
+2900000 lines written
+3000000 lines written
+3100000 lines written
+3200000 lines written
+3300000 lines written
+3400000 lines written
+3500000 lines written
+3600000 lines written
+3700000 lines written
+3800000 lines written
+3900000 lines written
+4000000 lines written
+4100000 lines written
+4200000 lines written
+4300000 lines written
+Finished writing file: 4384306 lines
+Constructing vocabulary from counts file in data/counts_bnc_full_seqlist_deptree.csv
+122919 unique tokens in vocabulary with (with minimum frequency 5
+
+=================== MODEL PARAMETERS: =================== 
+
+device: 	 cuda
+cuda: 	 True
+dataset_path: 	 data/bnc_full_seqlist_deptree.json
+counts_file: 	 data/counts_bnc_full_seqlist_deptree.csv
+vocab_cutoff: 	 5
+train_data_path: 	 data/bnc_full_seqlist_deptree.json
+val_data_path: 	 data/bnc_full_seqlist_deptree.json
+test_data_path: 	 data/bnc_full_seqlist_deptree.json
+onehot_features: 	 False
+num_data_save_path: 	 data/bnc_full_seqlist_deptree_numeric_voc-5.json
+
+=================== / MODEL PARAMETERS: =================== 
+
+Writing numericalised dataset to data/bnc_full_seqlist_deptree_numeric_voc-5.json
+Traceback (most recent call last):
+  File "tree2seq_word-embs.py", line 211, in <module>
+    numericalise_dataset(dataset_path, num_data_save_path, vocabulary)
+  File "tree2seq_word-embs.py", line 106, in numericalise_dataset
+    seq = [vocabulary.stoi[w] for w in sample['seq']]
+  File "tree2seq_word-embs.py", line 106, in <listcomp>
+    seq = [vocabulary.stoi[w] for w in sample['seq']]
+KeyError: '1:2:1'

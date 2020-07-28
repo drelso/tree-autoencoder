@@ -28,7 +28,7 @@ from treelstm import TreeLSTM, calculate_evaluation_orders
 from torch.utils.data import Dataset, DataLoader
 
 from utils.tree_utils import convert_tree_to_tensors, word_ixs, load_data
-# from utils.text_utils import word_ixs
+from utils.text_utils import build_vocabulary
 
 from model.decoder import Decoder
 from model.tree2seq import Tree2Seq
@@ -54,8 +54,7 @@ if __name__ == '__main__':
 
     dataset_dir = 'data/'
     # dataset_name = 'bnc_sample' ## TOY EXAMPLE (11 SAMPLES)
-    dataset_name = 'bnc_full_seqlist_deptree'
-
+    dataset_name = 'bnc_full_seqlist_deptree_SAMPLE'
     dataset_path = dataset_dir + dataset_name + '.json'
     parameters['dataset_path'] = dataset_path
 
@@ -64,6 +63,7 @@ if __name__ == '__main__':
     vocab_path = vocab_dir + 'vocab-' + str(vocab_cutoff) + '_' + dataset_name + '.csv'
     parameters['vocab_path'] = vocab_path
 
+    vocabulary = build_vocabulary(vocab_path, min_freq=vocab_cutoff)
     word_ixs_dict = word_ixs(vocab_path)
 
     # test_data_path = 'data/bnc_full_seqlist_deptree_SAMPLE_test.json' ## OLD PATH
@@ -91,13 +91,15 @@ if __name__ == '__main__':
 
     ## TIMING TESTS
     start_time = time.time()
-    test_data = load_data(test_data_path, word_ixs_dict, device=device, onehot_features=onehot_features)
+    train_data = load_data(train_data_path, vocabulary, device=device, onehot_features=onehot_features)
+    # test_data = load_data(test_data_path, word_ixs_dict, device=device, onehot_features=onehot_features)
     elapsed_time = time.time() - start_time
     print('\nTotal elapsed time: ', elapsed_time)
-    exit()
+    # exit()
     ## / TIMING TESTS
 
-    input_dim = len(word_ixs_dict)#word_ixs())
+    # input_dim = len(word_ixs_dict)#word_ixs())
+    input_dim = len(vocabulary)#word_ixs())
     # output_dim = len(tag_ixs())
 
     embedding_dim = 20 # Hidden unit dimension
@@ -114,7 +116,8 @@ if __name__ == '__main__':
     encoder = TreeLSTM(input_dim, embedding_dim, word_emb_dim).train()
     decoder = Decoder(input_dim, embedding_dim, embedding_dim, N_LAYERS, DEC_DROPOUT).train()
 
-    model = Tree2Seq(encoder, decoder, device, word_ixs_dict).train()
+    # model = Tree2Seq(encoder, decoder, device, word_ixs_dict).train()
+    model = Tree2Seq(encoder, decoder, device, vocabulary).train()
     
     # print('PARAMETERS')
     # for name, param in model.named_parameters():
@@ -124,7 +127,8 @@ if __name__ == '__main__':
 
     loss_function = torch.nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(model.parameters())
-    criterion = nn.CrossEntropyLoss(ignore_index = word_ixs_dict['<sos>']) # word_ixs()['<sos>'])
+    # criterion = nn.CrossEntropyLoss(ignore_index = word_ixs_dict['<sos>']) # word_ixs()['<sos>'])
+    criterion = nn.CrossEntropyLoss(ignore_index = vocabulary.stoi['<sos>']) # word_ixs()['<sos>'])
 
     for n in range(N_EPOCHS):
         optimizer.zero_grad()

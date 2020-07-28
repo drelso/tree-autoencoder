@@ -91,17 +91,26 @@ class TreeLSTM(torch.nn.Module):
         # print('+++++++++++++++ Features argmax ', torch.argmax(features[node_mask, :], dim=1))
         ## UNCOMMENT FOR ORIGINAL IMPLEMENTATION
         # x = features[node_mask, :]
-
+        
         # @DR
+        # DEBUGGING: DIMENSION CHECK
+        print(f'features \t {features} \n')#.size()[0]
+        print(f'node_mask \t {node_mask} \n')#.size()[0]
+        print(f'features[node_mask, :] \t {features[node_mask]}')#.size()[0]
+
+        # @DR: OLD-REMOVE
         # DIMENSIONALITY FIX, IF features[parent_indexes, :] HAS
         # A SINGLE EXAMPLE TAKE THE GLOBAL ARGMAX AND UNSQUEEZE,
         # ELSE GET THE ARGMAX FROM EACH EXAMPLE
-        if features[node_mask, :].size()[0] == 1:
-            x = self.word_embedding(torch.argmax(features[node_mask, :])).unsqueeze(0)
-        else:
-            # print('@@@ features[node_mask, :].size()[0] larger than 1')
-            # print(f'torch.argmax(features[node_mask, :]) {torch.argmax(features[node_mask, :], dim=1)}')
-            x = self.word_embedding(torch.argmax(features[node_mask, :], dim=1))
+        # if features[node_mask, :].size()[0] == 1:
+        #     x = self.word_embedding(torch.argmax(features[node_mask, :])).unsqueeze(0)
+        # else:
+        #     # print('@@@ features[node_mask, :].size()[0] larger than 1')
+        #     # print(f'torch.argmax(features[node_mask, :]) {torch.argmax(features[node_mask, :], dim=1)}')
+        #     x = self.word_embedding(torch.argmax(features[node_mask, :], dim=1))
+
+        x = self.word_embedding(features[node_mask])
+        # print(f'######## x: \t {x}')
 
         # print(f'iteration: {iteration} \n \t node mask: {node_mask} \t x: {x}')
         # print(f'x length {x.size()}')
@@ -163,14 +172,17 @@ class TreeLSTM(torch.nn.Module):
             # print(f'features[parent_indexes, :] {features[parent_indexes, :]}')
             # print(f'torch.argmax(features[parent_indexes, :]) {torch.argmax(features[parent_indexes, :], dim=1)}')
 
-            # @DR
+            # @DR: OLD-REMOVE
             # DIMENSIONALITY FIX, IF features[parent_indexes, :] HAS
             # A SINGLE EXAMPLE TAKE THE GLOBAL ARGMAX AND UNSQUEEZE,
             # ELSE GET THE ARGMAX FROM EACH EXAMPLE
-            if features[parent_indexes, :].size()[0] == 1:
-                x_parents = self.word_embedding(torch.argmax(features[parent_indexes, :])).unsqueeze(0)
-            else:
-                x_parents = self.word_embedding(torch.argmax(features[parent_indexes, :], dim=1))
+            # if features[parent_indexes, :].size()[0] == 1:
+            #     x_parents = self.word_embedding(torch.argmax(features[parent_indexes, :])).unsqueeze(0)
+            # else:
+            #     x_parents = self.word_embedding(torch.argmax(features[parent_indexes, :], dim=1))
+
+            x_parents = self.word_embedding(features[parent_indexes])
+
             # print('x_parents type', x_parents.type())
             # print('x_parents', x_parents)
             f = self.W_f(x_parents) + self.U_f(child_h)

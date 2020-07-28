@@ -1,5 +1,67 @@
 ###
 #
+# Text data utility functions 
+#
+##
+
+import csv
+from collections import Counter
+import torchtext
+
+def build_vocabulary(counts_file, min_freq=1):
+    """
+    Builds a torchtext.vocab object from a CSV file of word
+    counts and an optionally specified frequency threshold
+
+    Requirements
+    ------------
+    import csv
+    from collections import Counter
+    import torchtext
+    
+    Parameters
+    ----------
+    counts_file : str
+        path to counts CSV file
+    min_freq : int, optional
+        frequency threshold, words with counts lower
+        than this will not be included in the vocabulary
+        (default: 1)
+    
+    Returns
+    -------
+    torchtext.vocab.Vocab
+        torchtext Vocab object
+    """
+    counts_dict = {}
+
+    print(f'Constructing vocabulary from counts file in {counts_file}')
+
+    with open(counts_file, 'r', encoding='utf-8') as f:
+        reader = csv.reader(f)
+        for row in reader:
+            # FIRST COLUMN IS ASSUMED TO BE THE WORD AND
+            # THE SECOND COLUMN IS ASSUMED TO BE THE COUNT
+            counts_dict[row[0]] = int(row[1])
+
+    counts = Counter(counts_dict)
+    del counts_dict
+    
+    vocabulary = torchtext.vocab.Vocab(counts, min_freq=min_freq, specials=['<unk>', '<sos>', '<eos>', '<pad>'])
+    print(f'{len(vocabulary)} unique tokens in vocabulary with (with minimum frequency {min_freq})')
+    
+    return vocabulary
+
+
+
+
+
+
+
+
+'''
+###
+#
 # Text data utility functions
 #
 ###
@@ -107,3 +169,4 @@ def list_to_index_tensor(in_list, device=torch.device('cpu')):
     index_list = [[word_ixs()[word]] if word in word_ixs().keys() else [0] for word in in_list]
     index_tensor = torch.tensor(index_list, device=device)#.unsqueeze(0)
     return index_tensor
+'''

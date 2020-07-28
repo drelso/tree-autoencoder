@@ -32,8 +32,8 @@ def load_data(dataset_path, word_ixs_dict, device=torch.device('cpu'), onehot_fe
             #      AS THEY CANNOT BE CORRECTLY PROCESSED AS TREE DATA
             if len(sample['seq']) > 1 and len(sample['tree']['children']) > 0:
                 # dataset.append(json.loads(line))
-                tree_tensor = convert_tree_to_tensors(sample['tree'], word_ixs_dict, device=device, onehot_features=onehot_features)
-                
+                tree_tensor = convert_tree_to_tensors_OLD(sample['tree'], word_ixs_dict, device=device, onehot_features=onehot_features)
+
                 target = ['<sos>']
                 target.extend(sample['seq'])
                 target.append('<eos>')
@@ -66,7 +66,7 @@ def word_ixs(vocab_path):
 
         # Manually add special tokens at the beginning of
         # the vocabulary
-        word_ixs_dict['<UNK>'] = 0
+        word_ixs_dict['<unk>'] = 0
         word_ixs_dict['<sos>'] = 1
         word_ixs_dict['<eos>'] = 2
 
@@ -108,31 +108,38 @@ def onehot_to_word(onehot_tensor, word_ixs_dict):
 #     return tag_ixs_dict
 
 
-def onehot_rep(item, word_ixs_dict, is_word=True):
+def onehot_rep(item, vocabulary, is_word=True):
 
     # ixs_dict = word_ixs_dict if is_word else tag_ixs()
-    ixs_dict = word_ixs_dict
 
-    onehot_list = [0] * len(ixs_dict)
-    if item in ixs_dict.keys():
-        onehot_list[ixs_dict[item]] = 1
+    onehot_list = [0] * len(vocabulary)
+    if item in vocabulary.stoi.keys():
+        # onehot_list[ixs_dict[item]] = 1
+        onehot_list[vocabulary.stoi[item]] = 1
     else:
         # If word is not in the vocabulary
         # return UNK onehot encoding
-        onehot_list[ixs_dict['<UNK>']] = 1
+        # onehot_list[ixs_dict['<UNK>']] = 1
+        onehot_list[vocabulary.stoi['<unk>']] = 1
 
     return onehot_list
 
 
-def word_ix_rep(item, word_ixs_dict):
-    if item in word_ixs_dict.keys():
-        return word_ixs_dict[item]
+def word_ix_rep(item, vocabulary):
+    # if item in word_ixs_dict.keys():
+    #     return word_ixs_dict[item]
+    # else:
+    #     return word_ixs_dict['<UNK>']
+
+    if item in vocabulary.stoi.keys():
+        return vocabulary.stoi[item]
     else:
-        return word_ixs_dict['<UNK>']
+        return vocabulary.stoi['<unk>']
 
 
 def list_to_index_tensor(in_list, word_ixs_dict, device=torch.device('cpu')): 
-    index_list = [[word_ixs_dict[word]] if word in word_ixs_dict.keys() else [0] for word in in_list]
+    # index_list = [[word_ixs_dict[word]] if word in word_ixs_dict.keys() else [0] for word in in_list]
+    index_list = [[word_ixs_dict.stoi[word]] for word in in_list]
     index_tensor = torch.tensor(index_list, device=device)#.unsqueeze(0)
     return index_tensor
 
@@ -172,6 +179,14 @@ def _gather_level_list(node):
     for child in node['children']:
         _gather_level_list(child)
 
+
+def _label_level_index(node, n=0):
+    if n == 0:
+        node['level'] = n
+    n += 1
+    for child in node['children']:
+        child['level'] = n
+        _label_level_index(child, n)
 ##
 ## / @DR
 
@@ -183,23 +198,35 @@ def _label_node_index(node, n=0):
         _label_node_index(child, n)
 
 
-def _label_level_index(node, n=0):
-    if n == 0:
-        node['level'] = n
-    n += 1
-    for child in node['children']:
-        child['level'] = n
-        _label_level_index(child, n)
 
 
-def _gather_node_attributes(node, key,  word_ixs_dict, is_word=True, onehot_features=True):
-    if onehot_features:
-        features = [onehot_rep(node[key], word_ixs_dict, is_word=is_word)]
+def _gather_node_attributes(node, key, vocabulary=None, is_word=True):#, onehot_features=True):
+    # if onehot_features:
+    #     features = [onehot_rep(node[key], word_ixs_dict, is_word=is_word)]
+    # else:
+    #     features = [word_ix_rep(node[key], word_ixs_dict)]
+    
+    if vocabulary:
+        features = [vocabulary.stoi[node[key]]]
     else:
-        features = [word_ix_rep(node[key], word_ixs_dict)]
+        raise ValueException('Vocabulary needs to be specified to continue processing')
+
+    for child in node['children']:
+        # features.extend(_gather_node_attributes(child, key, word_ixs_dict, is_word=is_word, onehot_features=onehot_features))
+        features.extend(_gather_node_attributes(child, key, vocabulary, is_word=is_word))#, onehot_features=onehot_features))
+    return features
+
+
+
+def _gather_node_attributes_OLD(node, key, vocabulary=None, is_word=True, onehot_features=True):
+    if onehot_features:
+        features = [onehot_rep(node[key], vocabulary, is_word=is_word)]
+    else:
+        features = [word_ix_rep(node[key], vocabulary)]
     
     for child in node['children']:
-        features.extend(_gather_node_attributes(child, key, word_ixs_dict, is_word=is_word, onehot_features=onehot_features))
+        # features.extend(_gather_node_attributes(child, key, word_ixs_dict, is_word=is_word, onehot_features=onehot_features))
+        features.extend(_gather_node_attributes_OLD(child, key, vocabulary, is_word=is_word, onehot_features=onehot_features))
     return features
 
 
@@ -212,7 +239,7 @@ def _gather_adjacency_list(node):
     return adjacency_list
 
 
-def convert_tree_to_tensors(tree, word_ixs_dict, device=torch.device('cpu'), onehot_features=True):
+def convert_tree_to_tensors(tree, vocabulary=None, device=torch.device('cpu'), as_tensors=True):#, onehot_features=True):
     # Label each node with its walk order to match nodes to feature tensor indexes
     # This modifies the original tree as a side effect
     
@@ -227,13 +254,14 @@ def convert_tree_to_tensors(tree, word_ixs_dict, device=torch.device('cpu'), one
 
     # print('Indexed tree', tree)
 
-    words = _gather_node_attributes(tree, 'word',  word_ixs_dict, onehot_features=onehot_features)
+    words = _gather_node_attributes(tree, 'word',  vocabulary=vocabulary)#, onehot_features=onehot_features)
     
     # onehot_words = [onehot_rep(word) for word in words]
 
     # labels = _gather_node_attributes(tree, 'label', is_word=False)
     # onehot_labels = [onehot_rep(label, is_word=False) for label in labels]
-    
+    global global_level_list
+    global_level_list = []
     _gather_level_list(tree)
     levels = global_level_list
     # print('levels', levels)
@@ -244,14 +272,77 @@ def convert_tree_to_tensors(tree, word_ixs_dict, device=torch.device('cpu'), one
     has_children = np.array(node_order, dtype=bool)
     # print(f'has_children {has_children}')
 
-    return {
-        'features': torch.tensor(words, device=device, dtype=torch.int),
-        # 'labels': torch.tensor(labels, device=device, dtype=torch.float32),
-        'levels': torch.tensor(levels, device=device, dtype=torch.float32),
-        'node_order': torch.tensor(node_order, device=device, dtype=torch.int64),
-        'adjacency_list': torch.tensor(adjacency_list, device=device, dtype=torch.int64),
-        'edge_order': torch.tensor(edge_order, device=device, dtype=torch.int64),
-    }
+    if as_tensors:
+        return {
+            'features': torch.tensor(words, device=device, dtype=torch.int),
+            # 'labels': torch.tensor(labels, device=device, dtype=torch.float32),
+            'levels': torch.tensor(levels, device=device, dtype=torch.int),
+            'node_order': torch.tensor(node_order, device=device, dtype=torch.int),
+            'adjacency_list': torch.tensor(adjacency_list, device=device, dtype=torch.int),
+            'edge_order': torch.tensor(edge_order, device=device, dtype=torch.int),
+        }
+    else:
+        return {
+            'features': words,
+            # 'labels': torch.tensor(labels, device=device, dtype=torch.float32),
+            'levels': levels,
+            'node_order': node_order.tolist(),
+            'adjacency_list': adjacency_list,
+            'edge_order': edge_order.tolist(),
+        }
+
+
+def convert_tree_to_tensors_OLD(tree, vocabulary=None, device=torch.device('cpu'), as_tensors=True, onehot_features=True):
+    # Label each node with its walk order to match nodes to feature tensor indexes
+    # This modifies the original tree as a side effect
+    
+    ## CHANGED THIS FOR BREADTH FIRST INDEXING
+    # _label_node_index(tree)
+    global global_n
+    global_n = 0
+    _label_node_index_depth(tree)
+
+    ## LABEL NODE'S LEVEL IN THE TREE
+    _label_level_index(tree)
+
+    # print('Indexed tree', tree)
+
+    words = _gather_node_attributes_OLD(tree, 'word',  vocabulary=vocabulary, onehot_features=onehot_features)
+    
+    # onehot_words = [onehot_rep(word) for word in words]
+
+    # labels = _gather_node_attributes(tree, 'label', is_word=False)
+    # onehot_labels = [onehot_rep(label, is_word=False) for label in labels]
+    global global_level_list
+    global_level_list = []
+    _gather_level_list(tree)
+    levels = global_level_list
+    # print('levels', levels)
+
+    adjacency_list = _gather_adjacency_list(tree)
+
+    node_order, edge_order = calculate_evaluation_orders(adjacency_list, len(words))
+    has_children = np.array(node_order, dtype=bool)
+    # print(f'has_children {has_children}')
+
+    if as_tensors:
+        return {
+            'features': torch.tensor(words, device=device, dtype=torch.long),#int),
+            # 'labels': torch.tensor(labels, device=device, dtype=torch.float32),
+            'levels': torch.tensor(levels, device=device, dtype=torch.long),#int),
+            'node_order': torch.tensor(node_order, device=device, dtype=torch.long),#int),
+            'adjacency_list': torch.tensor(adjacency_list, device=device, dtype=torch.long),#int),
+            'edge_order': torch.tensor(edge_order, device=device, dtype=torch.long)#int),
+        }
+    else:
+        return {
+            'features': words,
+            # 'labels': torch.tensor(labels, device=device, dtype=torch.float32),
+            'levels': levels,
+            'node_order': node_order.tolist(),
+            'adjacency_list': adjacency_list,
+            'edge_order': edge_order.tolist(),
+        }
 
 
 def text_to_json_tree(text):
