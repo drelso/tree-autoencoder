@@ -22,7 +22,7 @@ class Tree2Seq(nn.Module):
         # torchtext.vocab object
         self.vocabulary = vocabulary
         
-    def forward(self, src_tree, trg, teacher_forcing_ratio = 0.5, i=0):
+    def forward(self, src_tree, trg, teacher_forcing_ratio = 0.5, print_preds=False):
         #src = [src len, batch size]
         #trg = [trg len, batch size]
         #teacher_forcing_ratio is probability to use teacher forcing
@@ -32,20 +32,12 @@ class Tree2Seq(nn.Module):
         trg_len = trg.shape[0]
         trg_vocab_size = self.decoder.output_dim
 
-        print(f'batch_size {batch_size}')
-        print(f'trg_len {trg_len}')
-        print(f'trg_vocab_size { trg_vocab_size}')
+        # print(f'batch_size {batch_size}')
+        # print(f'trg_len {trg_len}')
+        # print(f'trg_vocab_size { trg_vocab_size}')
         
         #tensor to store decoder outputs
         outputs = torch.zeros(trg_len, batch_size, trg_vocab_size).to(self.device)
-        
-        print(f'\n $$$$$ outputs size  {outputs.size()} $$$$$$ \n')
-        print(f'outputs ******** \n {outputs}')
-
-        if outputs.requires_grad:
-            print('\t\tOUTPUTS REQUIRES GRAD')
-        else:
-            print('\t\tOUTPUTS *DOES NOT* REQUIRE GRAD')
 
         # print('############## TYPES ##############')
         # print('features type', src_tree['features'].type())
@@ -60,18 +52,15 @@ class Tree2Seq(nn.Module):
         #first input to the decoder is the <sos> tokens
         input = trg[0,:]
         
-        print(f'enc_hidden size: {enc_hidden.size()}')
-        print(f'enc_cell size: {enc_cell.size()}')
+        # print(f'enc_hidden size: {enc_hidden.size()}')
+        # print(f'enc_cell size: {enc_cell.size()}')
 
         ## MODIFICATION: TAKE ONLY THE ROOT EMBEDDING AND CELL
         dec_hidden = enc_hidden[0].unsqueeze(0).unsqueeze(0)
         dec_cell = enc_cell[0].unsqueeze(0).unsqueeze(0)
         
-        print(f'dec_hidden size: {dec_hidden.size()}')
-        print(f'dec_cell size: {dec_cell.size()}')
-
-        if i % 10 == 0:
-            print(f'epoch number {i}')
+        # print(f'dec_hidden size: {dec_hidden.size()}')
+        # print(f'dec_cell size: {dec_cell.size()}')
 
         for t in range(1, trg_len):
             
@@ -91,8 +80,8 @@ class Tree2Seq(nn.Module):
             #get the highest predicted token from our predictions
             top1 = output.argmax(1)
             
-            # if i % 10 == 0:
-            print(f'top1 prediction: {self.vocabulary.itos[top1[0].item()]} \t target: {self.vocabulary.itos[trg[t][0].item()]}')
+            if print_preds:
+                print(f'top1 prediction: {self.vocabulary.itos[top1[0].item()]} \t target: {self.vocabulary.itos[trg[t][0].item()]}', flush=True)
             
             #if teacher forcing, use actual next token as next input
             #if not, use predicted token

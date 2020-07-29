@@ -23,7 +23,10 @@ import json
 import csv
 from collections import Counter
 import time
+import math
 import numpy as np
+
+import contextlib
 
 import torch
 import torch.nn as nn
@@ -43,6 +46,7 @@ from utils.tree_utils import convert_tree_to_tensors, word_ixs, load_data
 from model.decoder import Decoder
 from model.tree2seq import Tree2Seq
 
+from config import parameters
 
 ## HACKISH: INITIALISE THE DEFAULT DEVICE ACCORDING TO
 ## WHETHER GPU FOUND OR NOT. NECESSARY TO PASS THE RIGHT
@@ -225,57 +229,123 @@ def construct_dataset_splits(dataset_path, vocabulary, split_ratios=[.8, .1, .1]
     return train, test, validate
 
 
+
+
+@contextlib.contextmanager
+def dummy_context_mgr():
+    '''
+    Code required for conditional "with"
+
+    Requirements
+    ------------
+    import contextlib
+    '''
+    yield None
+
+
+def run_model(data_iter, model, phase='train', print_epoch=True):
+    if phase == 'train':
+        model.train()
+        optimizer.zero_grad()
+        grad_ctx_manager = dummy_context_mgr()
+    else:
+        model.eval()
+        grad_ctx_manager = torch.no_grad()
+    
+    epoch_loss = 0.0
+    i = 0
+    
+    # HACKISH SOLUTION TO MANUALLY CONSTRUCT THE BATCHES
+    # SINCE GOING THROUGH THE ITERATORS DIRECTLY FORCES
+    # THE 'numericalize()' FUNCTION ON THE DATA, WHICH
+    # WE NUMERICALISED PRIOR TO TRAINING TO SPEED UP
+    # PERFORMANCE
+    # RESTART BATCHES IN EVERY EPOCH
+    # TODO: REMOVE 'numericalize()' FUNCTION TO USE 
+    #       ITERATORS DIRECTLY
+    data_batches = torchtext.data.batch(data_iter.data(), data_iter.batch_size, data_iter.batch_size_fn)
+
+    start_time = time.time()
+
+    with grad_ctx_manager:
+        for batch in data_batches:
+            batch_input_list = []
+            batch_target = []
+            largest_seq = 0
+
+            while len(batch):
+                sample = batch.pop()
+
+                batch_input_list.append(sample.tree)
+                
+                proc_seq = [vocabulary.stoi['<sos>']] + sample.seq + [vocabulary.stoi['<eos>']]
+                if len(proc_seq) > largest_seq: largest_seq = len(proc_seq)
+                batch_target.append(proc_seq)
+                i += 1
+                
+            # if there is more than one element in the batch input
+            # process the batch with the treelstm.util.batch_tree_input
+            # utility function, else return the single element
+            if len(batch_input_list) > 1:
+                batch_input = batch_tree_input(batch_input_list)
+            else:
+                batch_input = batch_input_list[0]
+
+            for seq in batch_target:
+                # PAD THE SEQUENCES IN THE BATCH SO ALL OF THEM
+                # HAVE THE SAME LENGTH
+                len_diff = largest_seq - len(seq)
+                seq.extend([vocabulary.stoi['<pad>']] * len_diff)
+
+            batch_target_tensor = torch.tensor(batch_target, device=DEVICE, dtype=torch.long).transpose(0, 1)
+            
+            if print_epoch and i == 1:
+                print_preds = True
+            else:
+                print_preds = False
+
+            checkpoint_sample = not i % math.ceil(len(data_iter) / 10)
+            if print_epoch and checkpoint_sample:
+                elapsed_time = time.time() - start_time
+                print(f'\nElapsed time after {i} samples: {elapsed_time}')
+            
+            output = model(batch_input, batch_target_tensor, print_preds=print_preds)
+            
+            ## seq2seq.py
+            # "as the loss function only works on 2d inputs
+            # with 1d targets we need to flatten each of them
+            # with .view"
+            # "we slice off the first column of the output
+            # and target tensors (<sos>)"
+            # output = output.view(-1, parameters['input_dim'])[1:]#.view(-1)#, output_dim)
+            output = output.view(-1, input_dim)[1:]#.view(-1)#, output_dim)
+            batch_target_tensor = batch_target_tensor.view(-1)[1:]
+
+            loss = criterion(output, batch_target_tensor)
+            epoch_loss += loss.item()
+            
+            if phase == 'train':
+                loss.backward()
+                optimizer.step()
+            
+            # if n > 10: break
+    return epoch_loss / i
+
+
+
 if __name__ == '__main__':
-    ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    ## MODEL PARAMETERS
-    ##
-    parameters = {}
-
+    start_time = time.time()
+    
     # SEND TO GPU IF AVAILABLE
-    parameters['device'] = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(f"Running on device: {parameters['device']}")
-
+    DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"Running on device: {DEVICE}")
     if torch.cuda.is_available():
         torch.set_default_tensor_type(torch.cuda.FloatTensor)
-        parameters['cuda'] = True
-    else:
-        parameters['cuda'] = False
 
-    # CONSTRUCT PATHS TO DATASET, COUNTS, NUMERICALISED DATA
-    dataset_dir = 'data/'
-    # dataset_name = 'bnc_sample' ## TOY EXAMPLE (11 SAMPLES)
-    dataset_name = 'bnc_full_seqlist_deptree'
-    parameters['dataset_path'] = dataset_dir + dataset_name + '.json'
-    
-    parameters['counts_file'] = dataset_dir + 'counts_bnc_full_seqlist_deptree.csv'
-    parameters['vocab_cutoff'] = 1
-
-    parameters['num_data_save_path'] = dataset_dir + 'SAMPLE_' + dataset_name + '_numeric_voc-' + str(parameters['vocab_cutoff']) + '.json'
-
-    # TRAINING VARIABLES
-    parameters['embedding_dim'] = 20 # Hidden unit dimension TODO: CHANGE TO 768? (BERT)
-    parameters['word_emb_dim'] = 50 # TODO: CHANGE TO 300
-
-    # SEQ2SEQ TRAINING
-    parameters['num_layers'] = 1
-    parameters['dec_dropout'] = 0 #0.5
-    parameters['num_epochs'] = 100
-    parameters['split_ratios'] = [.8, .1, .1]
-    
-    parameters['batch_size'] = 2
-
-    # if True sorts samples based on the length of the sequence
-    # to construct batches of the same size. This helps minimise
-    # the amount of padding required for the batch processing.
-    # One problem, however, is that this sorts the batches in
-    # ascending length order
-    parameters['sort_train_val_data'] = True
-    parameters['shuffle_train_val_data'] = True
-    parameters['repeat_train_val_iter'] = False
-    
     # CONSTRUCT VOCABULARY
     vocabulary = build_vocabulary(parameters['counts_file'], min_freq=parameters['vocab_cutoff'])
-    parameters['input_dim'] = len(vocabulary)
+    # parameters['input_dim'] = len(vocabulary)
+    input_dim = len(vocabulary)
 
     # PRINT PARAMETERS
     print('\n=================== MODEL PARAMETERS: =================== \n')
@@ -304,10 +374,14 @@ if __name__ == '__main__':
 
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ## MODEL AND TRAINING INITIALISATION
-    encoder = TreeLSTM(parameters['input_dim'], parameters['embedding_dim'], parameters['word_emb_dim']).train()
-    decoder = Decoder(parameters['input_dim'], parameters['embedding_dim'], parameters['embedding_dim'], parameters['num_layers'], parameters['dec_dropout']).train()
+    # encoder = TreeLSTM(parameters['input_dim'], parameters['embedding_dim'], parameters['word_emb_dim']).train()
+    # decoder = Decoder(parameters['input_dim'], parameters['embedding_dim'], parameters['embedding_dim'], parameters['num_layers'], parameters['dec_dropout']).train()
 
-    model = Tree2Seq(encoder, decoder, parameters['device'], vocabulary)#.train()
+    encoder = TreeLSTM(input_dim, parameters['embedding_dim'], parameters['word_emb_dim'])
+    decoder = Decoder(input_dim, parameters['embedding_dim'], parameters['embedding_dim'], parameters['num_layers'], parameters['dec_dropout'])
+
+    # model = Tree2Seq(encoder, decoder, parameters['device'], vocabulary)#.train()
+    model = Tree2Seq(encoder, decoder, DEVICE, vocabulary)#.train()
     
     print('\n \\\\\\\\\\\\\\\\\\\\\\\\\ \n TRAINABLE PARAMETERS \n \\\\\\\\\\\\\\\\\\\\\\\\\ \n ')
     for name, param in model.named_parameters():
@@ -326,8 +400,8 @@ if __name__ == '__main__':
     # 'SAMPLE_bnc_full_seqlist_deptree_numeric_voc-1.json'
     train_data, test_data, val_data = construct_dataset_splits(parameters['num_data_save_path'], vocabulary, split_ratios=parameters['split_ratios'])
     
-    print('First example train seq:', train_data.examples[0].seq)
-    print('First example train tree:', train_data.examples[0].tree)
+    print('\nFirst example train seq:', train_data.examples[0].seq)
+    print('\nFirst example train tree:', train_data.examples[0].tree)
     
 
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -336,7 +410,8 @@ if __name__ == '__main__':
     train_iter, val_iter = BucketIterator.splits(
         (train_data, val_data),
         batch_sizes=(parameters['batch_size'], parameters['batch_size']),
-        device=parameters['device'],
+        # device=parameters['device'],
+        device=DEVICE,
         sort=parameters['sort_train_val_data'],
         # sort_within_batch=True,
         sort_key=lambda x: len(x.seq),
@@ -347,53 +422,37 @@ if __name__ == '__main__':
     test_iter = Iterator(
         test_data,
         batch_size=parameters['batch_size'],
-        device=parameters['device'],
+        # device=parameters['device'],
+        device=DEVICE,
         repeat=parameters['repeat_train_val_iter']
     )
-
-    train_batches = torchtext.data.batch(train_iter.data(), train_iter.batch_size, train_iter.batch_size_fn)
-    val_batches = torchtext.data.batch(val_iter.data(), val_iter.batch_size, val_iter.batch_size_fn)
     
     # model.train()
-    
-    '''
-    target = torch.tensor([[34, 40, 474, 11495]]).transpose(0, 1)
-    input = {
-        'features': torch.tensor([   40,    34,   474, 11495]),
-        'levels': torch.tensor([0, 1, 1, 1]), 
-        'node_order': torch.tensor([1, 0, 0, 0]), 
-        'adjacency_list': torch.tensor([[0, 1],[0, 2],[0, 3]]), 
-        'edge_order': torch.tensor([1, 1, 1])}
-    output = model(input, target)#, i=n)
-    print(f'\n\n\nINPUT: {input}')
-    print(f'\n\nTARGET: {target}')
-    print(f'\n\nTARGET SIZE: {target.size()}')
-    # print(f'\n\nTARGET TRANSPOSED: {target.transpose(0,1)}')
-    # print(f'\n\nTARGET TRANSPOSED SIZE: {target.transpose(0,1).size()}')
-    print(f'\n\n\nOUTPUT: {output}')
-    print(f'OUTPUT SIZE: {output.size()}')
-
-    target = target.view(-1)
-    output = output.view(-1, parameters['input_dim'])
-    print('############ RESHAPEN TENSORS')
-    print(f'\n\nTARGET: {target}')
-    print(f'\n\nTARGET SIZE: {target.size()}')
-    print(f'\n\n\nOUTPUT: {output}')
-    print(f'OUTPUT SIZE: {output.size()}')
-    loss = criterion(output, target)
-    print(f'\n\nLOSS: {loss}')
-    loss.backward()
-    optimizer.step()
-    '''
 
     # '''
-    for n in range(parameters['num_epochs']):
+    for epoch in range(parameters['num_epochs']):
+        print(f'\n\n &&&&&&&&&&&&& \n ############# \n \t\t\t EPOCH ======> {epoch} \n &&&&&&&&&&&&& \n ############# \n\n')
+
+        '''
         optimizer.zero_grad()
 
         epoch_loss = 0.0
         
+        n = 0
+
+        # HACKISH SOLUTION TO MANUALLY CONSTRUCT THE BATCHES
+        # SINCE GOING THROUGH THE ITERATORS DIRECTLY FORCES
+        # THE 'numericalize()' FUNCTION ON THE DATA, WHICH
+        # WE NUMERICALISED PRIOR TO TRAINING TO SPEED UP
+        # PERFORMANCE
+        # RESTART BATCHES IN EVERY EPOCH
+        # TODO: REMOVE 'numericalize()' FUNCTION TO USE 
+        #       ITERATORS DIRECTLY
+        train_batches = torchtext.data.batch(train_iter.data(), train_iter.batch_size, train_iter.batch_size_fn)
+        val_batches = torchtext.data.batch(val_iter.data(), val_iter.batch_size, val_iter.batch_size_fn)
+
         for batch in train_batches:
-            print(f'batch size: {len(batch)}')
+            # print(f'batch size: {len(batch)}')
 
             # batch_input = {}
             batch_input_list = []
@@ -409,9 +468,8 @@ if __name__ == '__main__':
                 if len(proc_seq) > largest_seq: largest_seq = len(proc_seq)
                 batch_target.append(proc_seq)
                         
-                print(f'--- LEN: \t {len(sample.seq)}')
-                print(sample.seq)
-                print(sample.tree)
+                # print(f'--- LEN: \t {len(sample.seq)}')
+                # print(sample.tree)
 
             # if there is more than one element in the batch input
             # process the batch with the treelstm.util.batch_tree_input
@@ -427,89 +485,81 @@ if __name__ == '__main__':
                 len_diff = largest_seq - len(seq)
                 seq.extend([vocabulary.stoi['<pad>']] * len_diff)
 
-            print('333333333333 \t FULL BATCH \t')
-            print('batch tree:', batch_input)
-            print('batch seq:', batch_target)
+            # print('333333333333 \t FULL BATCH \t')
+            # print('batch tree:', batch_input)
+            # print('batch seq:', batch_target)
 
-            print('333333333333 \t FULL BATCH TENSORS \t')
+            # print('333333333333 \t FULL BATCH TENSORS \t')
             # batch_input_tensor = treedict_to_tensor(batch_input, device=parameters['device'])
-            batch_target_tensor = torch.tensor(batch_target, device=parameters['device'], dtype=torch.long).transpose(0, 1)
+            # batch_target_tensor = torch.tensor(batch_target, device=parameters['device'], dtype=torch.long).transpose(0, 1)
+            batch_target_tensor = torch.tensor(batch_target, device=DEVICE, dtype=torch.long).transpose(0, 1)
             # print('batch tree: \t size:', len(batch_input_tensor), ' \t data: ', batch_input_tensor)
-            print('batch tree: \t size:', len(batch_input), ' \t data: ', batch_input)
-            print('batch seq: \t size:', batch_target_tensor.size(), ' \t data: ', batch_target_tensor)
+            # print('batch tree: \t size:', len(batch_input), ' \t data: ', batch_input)
+            # print('batch seq: \t size:', batch_target_tensor.size(), ' \t data: ', batch_target_tensor)
             
-            n = 0
             # output = model(batch_input_tensor, batch_target_tensor, i=n)
-            output = model(batch_input, batch_target_tensor, i=n)
-            print(f'PRE ----- output size: {output.size()}')
-            print(f'PRE ----- output: {output}')
+            if not epoch % int(parameters['num_epochs'] / 10) and n == 0:
+                print_preds = True
+            else:
+                print_preds = False
+            
+            output = model(batch_input, batch_target_tensor, print_preds=print_preds)
+            # print(f'PRE ----- output size: {output.size()}')
+            # print(f'PRE ----- output: {output}')
             # output = output.squeeze()
             # print(f'POST----- output size: {output.size()}')
             # print(f'POST ----- output: {output}')
 
-            print(f'PRE ----- batch_target_tensor size: {batch_target_tensor.size()}')
-            print(f'PRE ----- batch_target_tensor: {batch_target_tensor}')
+            # print(f'PRE ----- batch_target_tensor size: {batch_target_tensor.size()}')
+            # print(f'PRE ----- batch_target_tensor: {batch_target_tensor}')
             # batch_target_tensor = batch_target_tensor.squeeze()
             # print(f'POST----- batch_target_tensor size: {batch_target_tensor.size()}')
             # print(f'POST ----- batch_target_tensor: {batch_target_tensor}')
 
+            ## seq2seq.py
             # "as the loss function only works on 2d inputs
             # with 1d targets we need to flatten each of them
             # with .view"
             # "we slice off the first column of the output
             # and target tensors (<sos>)"
-            output = output.view(-1, parameters['input_dim'])[1:]#.view(-1)#, output_dim)
+            # output = output.view(-1, parameters['input_dim'])[1:]#.view(-1)#, output_dim)
+            output = output.view(-1, input_dim)[1:]#.view(-1)#, output_dim)
             batch_target_tensor = batch_target_tensor.view(-1)[1:]
 
-            print(f'\n\noutput: {output}')
-            print(f'target_tensor: {batch_target_tensor}')
+            # print(f'\n\noutput: {output}')
+            # print(f'target_tensor: {batch_target_tensor}')
             
             loss = criterion(output, batch_target_tensor)
             epoch_loss += loss.item()
-            print(f'loss item {loss.item()}')
+            # print(f'loss item {loss.item()}')
             
             loss.backward()
             optimizer.step()
             
             n += 1
-
-            if n > 10: break
+            # if n > 10: break
+        '''
         
-        '''
-        # Single datapoint batch
-        # TODO: process larger batches to speed up processing
-        for sample in train_data:
-            output = model(sample['input'], sample['target'], i=n)
+        # epoch_loss /= len(train_data)
 
-            ## seq2seq.py
-            ##
-            #trg = [trg len, batch size]
-            #output = [trg len, batch size, output dim]
-            output_dim = output.shape[-1]
-            
-            # "as the loss function only works on 2d inputs
-            # with 1d targets we need to flatten each of them
-            # with .view"
-            # "we slice off the first column of the output
-            # and target tensors (<sos>)"
-            output = output[1:].view(-1)#, output_dim)
-            target_tensor = sample['target'][1:].view(-1)
-            ##
-            ## /seq2seq.py
+        print_epoch = not epoch % math.ceil(parameters['num_epochs'] / 10)
+        
+        epoch_start_time = time.time()
 
-            loss = criterion(output, target_tensor)
-            epoch_loss += loss.item()
-            loss.backward()
-            optimizer.step()
-        '''
+        print(f'\n Epoch {epoch} training... \n')
+        epoch_loss = run_model(train_iter, model, phase='train', print_epoch=print_epoch)
+        print(f'\n Epoch {epoch} validation... \n')
+        val_epoch_loss = run_model(val_iter, model, phase='val', print_epoch=print_epoch)
+        
 
-        epoch_loss /= len(train_data)
+        if print_epoch:
+            elapsed_time = time.time() - epoch_start_time
+            print(f'Elapsed time in epoch {epoch}: {elapsed_time}' )
 
-        if not n % int(parameters['num_epochs'] / 10):
-            print(f'Iteration {n+1} Loss: {epoch_loss}')
+            print(f'Iteration {epoch} \t Loss: {epoch_loss} \t Validation loss: {val_epoch_loss}')
             # print(f'output: {output}')
             # print('Dims h:', h.size(), ' c:', c.size())
-        
+
         '''
         # VALIDATION
         with torch.no_grad():
@@ -532,3 +582,6 @@ if __name__ == '__main__':
         if not n % int(parameters['num_epochs'] / 10):
             print(f'Iteration {n+1} Loss: {epoch_loss} \t Validation loss: {val_loss}')
         '''
+    
+    elapsed_time = time.time() - start_time
+    print(f'{"=" * 20} \n\t Total elapsed time: {elapsed_time} \n {"=" * 20} \n')
