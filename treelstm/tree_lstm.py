@@ -94,9 +94,9 @@ class TreeLSTM(torch.nn.Module):
         
         # @DR
         # DEBUGGING: DIMENSION CHECK
-        print(f'features \t {features} \n')#.size()[0]
-        print(f'node_mask \t {node_mask} \n')#.size()[0]
-        print(f'features[node_mask, :] \t {features[node_mask]}')#.size()[0]
+        # print(f'features \t {features} \n')#.size()[0]
+        # print(f'node_mask \t {node_mask} \n')#.size()[0]
+        # print(f'features[node_mask, :] \t {features[node_mask]}')#.size()[0]
 
         # @DR: OLD-REMOVE
         # DIMENSIONALITY FIX, IF features[parent_indexes, :] HAS

@@ -39,7 +39,13 @@ class Tree2Seq(nn.Module):
         #tensor to store decoder outputs
         outputs = torch.zeros(trg_len, batch_size, trg_vocab_size).to(self.device)
         
+        print(f'\n $$$$$ outputs size  {outputs.size()} $$$$$$ \n')
         print(f'outputs ******** \n {outputs}')
+
+        if outputs.requires_grad:
+            print('\t\tOUTPUTS REQUIRES GRAD')
+        else:
+            print('\t\tOUTPUTS *DOES NOT* REQUIRE GRAD')
 
         # print('############## TYPES ##############')
         # print('features type', src_tree['features'].type())

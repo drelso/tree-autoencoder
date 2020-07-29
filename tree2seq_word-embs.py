@@ -259,10 +259,10 @@ if __name__ == '__main__':
     # SEQ2SEQ TRAINING
     parameters['num_layers'] = 1
     parameters['dec_dropout'] = 0 #0.5
-    parameters['num_epochs'] = 1
+    parameters['num_epochs'] = 100
     parameters['split_ratios'] = [.8, .1, .1]
     
-    parameters['batch_size'] = 1
+    parameters['batch_size'] = 2
 
     # if True sorts samples based on the length of the sequence
     # to construct batches of the same size. This helps minimise
@@ -275,13 +275,6 @@ if __name__ == '__main__':
     
     # CONSTRUCT VOCABULARY
     vocabulary = build_vocabulary(parameters['counts_file'], min_freq=parameters['vocab_cutoff'])
-    print(f'vocabulary dir {dir(vocabulary)}')
-    print(f'vocabulary unk {vocabulary.unk_index}')
-    print(f'vocabulary unk {vocabulary.UNK}')
-    print(f'vocabulary unk {vocabulary.stoi[vocabulary.UNK]}')
-    print(f'vocabulary unk {vocabulary.itos[vocabulary.unk_index]}')
-
-    exit()
     parameters['input_dim'] = len(vocabulary)
 
     # PRINT PARAMETERS
@@ -311,8 +304,8 @@ if __name__ == '__main__':
 
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ## MODEL AND TRAINING INITIALISATION
-    encoder = TreeLSTM(parameters['input_dim'], parameters['embedding_dim'], parameters['word_emb_dim'])#.train()
-    decoder = Decoder(parameters['input_dim'], parameters['embedding_dim'], parameters['embedding_dim'], parameters['num_layers'], parameters['dec_dropout'])#.train()
+    encoder = TreeLSTM(parameters['input_dim'], parameters['embedding_dim'], parameters['word_emb_dim']).train()
+    decoder = Decoder(parameters['input_dim'], parameters['embedding_dim'], parameters['embedding_dim'], parameters['num_layers'], parameters['dec_dropout']).train()
 
     model = Tree2Seq(encoder, decoder, parameters['device'], vocabulary)#.train()
     
@@ -363,8 +356,8 @@ if __name__ == '__main__':
     
     # model.train()
     
-    # '''
-    target = torch.tensor([[34, 40, 474, 11495]])
+    '''
+    target = torch.tensor([[34, 40, 474, 11495]]).transpose(0, 1)
     input = {
         'features': torch.tensor([   40,    34,   474, 11495]),
         'levels': torch.tensor([0, 1, 1, 1]), 
@@ -375,12 +368,11 @@ if __name__ == '__main__':
     print(f'\n\n\nINPUT: {input}')
     print(f'\n\nTARGET: {target}')
     print(f'\n\nTARGET SIZE: {target.size()}')
+    # print(f'\n\nTARGET TRANSPOSED: {target.transpose(0,1)}')
+    # print(f'\n\nTARGET TRANSPOSED SIZE: {target.transpose(0,1).size()}')
     print(f'\n\n\nOUTPUT: {output}')
     print(f'OUTPUT SIZE: {output.size()}')
-    if output.requires_grad:
-        print('\t\tOUTPUT REQUIRES GRAD')
-    else:
-        print('\t\tOUTPUT *DOES NOT* REQUIRE GRAD')
+
     target = target.view(-1)
     output = output.view(-1, parameters['input_dim'])
     print('############ RESHAPEN TENSORS')
@@ -392,9 +384,9 @@ if __name__ == '__main__':
     print(f'\n\nLOSS: {loss}')
     loss.backward()
     optimizer.step()
-    # '''
-
     '''
+
+    # '''
     for n in range(parameters['num_epochs']):
         optimizer.zero_grad()
 
@@ -441,7 +433,7 @@ if __name__ == '__main__':
 
             print('333333333333 \t FULL BATCH TENSORS \t')
             # batch_input_tensor = treedict_to_tensor(batch_input, device=parameters['device'])
-            batch_target_tensor = torch.tensor(batch_target, device=parameters['device'], dtype=torch.long)
+            batch_target_tensor = torch.tensor(batch_target, device=parameters['device'], dtype=torch.long).transpose(0, 1)
             # print('batch tree: \t size:', len(batch_input_tensor), ' \t data: ', batch_input_tensor)
             print('batch tree: \t size:', len(batch_input), ' \t data: ', batch_input)
             print('batch seq: \t size:', batch_target_tensor.size(), ' \t data: ', batch_target_tensor)
@@ -478,10 +470,12 @@ if __name__ == '__main__':
             
             loss.backward()
             optimizer.step()
+            
+            n += 1
 
-            break
+            if n > 10: break
         
-
+        '''
         # Single datapoint batch
         # TODO: process larger batches to speed up processing
         for sample in train_data:
@@ -507,6 +501,7 @@ if __name__ == '__main__':
             epoch_loss += loss.item()
             loss.backward()
             optimizer.step()
+        '''
 
         epoch_loss /= len(train_data)
 
@@ -515,6 +510,7 @@ if __name__ == '__main__':
             # print(f'output: {output}')
             # print('Dims h:', h.size(), ' c:', c.size())
         
+        '''
         # VALIDATION
         with torch.no_grad():
             val_loss = 0.0
@@ -535,4 +531,4 @@ if __name__ == '__main__':
         
         if not n % int(parameters['num_epochs'] / 10):
             print(f'Iteration {n+1} Loss: {epoch_loss} \t Validation loss: {val_loss}')
-    '''
+        '''

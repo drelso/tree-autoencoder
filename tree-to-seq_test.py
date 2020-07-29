@@ -92,7 +92,8 @@ if __name__ == '__main__':
     ## TIMING TESTS
     start_time = time.time()
     train_data = load_data(train_data_path, vocabulary, device=device, onehot_features=onehot_features)
-    # test_data = load_data(test_data_path, word_ixs_dict, device=device, onehot_features=onehot_features)
+    val_data = load_data(val_data_path, vocabulary, device=device, onehot_features=onehot_features)
+    test_data = load_data(test_data_path, vocabulary, device=device, onehot_features=onehot_features)
     elapsed_time = time.time() - start_time
     print('\nTotal elapsed time: ', elapsed_time)
     # exit()
@@ -142,6 +143,9 @@ if __name__ == '__main__':
         # Single datapoint batch
         # TODO: process larger batches to speed up processing
         for sample in train_data:
+            print(f'^^^^^^^^^^ input size: \t {sample["input"]["features"].size()} \t ^^^^^^^^^^ target size: \t {sample["target"].size()} ^^^^^^^^^^ \n')
+            print(f'!!!!!!!!!!!!!!! \n input: \t {sample["input"]} \n\n !!!!!!!!!!!!!!! \n target: \t {sample["target"]} \n\n !!!!!!!!!!!!!!! \n')
+            print(f'input features type: {sample["input"]["features"].type()} \n')
             output = model(sample['input'], sample['target'], i=n)
             
             # print('output PRE', len(output), output.size())#[0].size(), output[1].size())
@@ -171,6 +175,7 @@ if __name__ == '__main__':
             epoch_loss += loss.item()
             loss.backward()
             optimizer.step()
+            exit()
 
         epoch_loss /= len(train_data)
 
