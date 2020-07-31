@@ -32,9 +32,9 @@ class Tree2Seq(nn.Module):
         trg_len = trg.shape[0]
         trg_vocab_size = self.decoder.output_dim
 
-        # print(f'batch_size {batch_size}')
-        # print(f'trg_len {trg_len}')
-        # print(f'trg_vocab_size { trg_vocab_size}')
+        print(f'batch_size {batch_size}')
+        print(f'trg shape {trg.shape}')
+        print(f'trg_vocab_size { trg_vocab_size}')
         
         #tensor to store decoder outputs
         outputs = torch.zeros(trg_len, batch_size, trg_vocab_size).to(self.device)
@@ -55,9 +55,19 @@ class Tree2Seq(nn.Module):
         # print(f'enc_hidden size: {enc_hidden.size()}')
         # print(f'enc_cell size: {enc_cell.size()}')
 
-        ## MODIFICATION: TAKE ONLY THE ROOT EMBEDDING AND CELL
-        dec_hidden = enc_hidden[0].unsqueeze(0).unsqueeze(0)
-        dec_cell = enc_cell[0].unsqueeze(0).unsqueeze(0)
+        if batch_size == 1:
+            ## MODIFICATION: TAKE ONLY THE ROOT EMBEDDING AND CELL
+            dec_hidden = enc_hidden[0].unsqueeze(0).unsqueeze(0)
+            dec_cell = enc_cell[0].unsqueeze(0).unsqueeze(0)
+        else:
+            root_indices = []
+            current_root_ix = 0
+            for tree_size in src_tree['tree_sizes']:
+                root_indices.append(current_root_ix)
+                current_root_ix += tree_size
+            # print(f'{"@" * 19} \t root indices {root_indices}')
+            dec_hidden = enc_hidden[root_indices].unsqueeze(0)
+            dec_cell = enc_cell[root_indices].unsqueeze(0)
         
         # print(f'dec_hidden size: {dec_hidden.size()}')
         # print(f'dec_cell size: {dec_cell.size()}')

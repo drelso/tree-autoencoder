@@ -46,14 +46,22 @@ from treelstm.tree_utils import convert_tree_to_tensors, word_ixs, load_data
 from utils.gpu_status import get_gpu_status
 from treelstm.training_utils import build_vocabulary, numericalise_dataset, list_to_tensor, treedict_to_tensor, construct_dataset_splits, run_model
 
-from model.decoder import Decoder
-from model.tree2seq import Tree2Seq
+from architectures.decoder import Decoder
+from architectures.tree2seq import Tree2Seq
 
 from config_files.config_batch import parameters
 
 
-
 if __name__ == '__main__':
+    # Model directory housekeeping
+    if not os.path.isdir(parameters['all_models_dir']):
+        os.mkdir(parameters['all_models_dir'])
+    if not os.path.isdir(parameters['model_dir']):
+        os.mkdir(parameters['model_dir'])
+    if not os.path.isdir(parameters['checkpoints_dir']):
+        os.mkdir(parameters['checkpoints_dir'])
+    if not parameters['checkpoints_dir'].endswith('/'): parameters['checkpoints_dir'] += '/'
+
     start_time = time.time()
     
     # SEND TO GPU IF AVAILABLE
@@ -105,7 +113,7 @@ if __name__ == '__main__':
 
     loss_function = torch.nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(model.parameters())
-    criterion = nn.CrossEntropyLoss(ignore_index = vocabulary.stoi['<sos>'])
+    criterion = torch.nn.CrossEntropyLoss(ignore_index = vocabulary.stoi['<sos>'])
     
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ## LOAD AND SPLIT DATASET
@@ -146,6 +154,17 @@ if __name__ == '__main__':
 
         print(f'\n Epoch {epoch} training... \n')
         epoch_loss = run_model(train_iter, model, optimizer, criterion, vocabulary, device=DEVICE, phase='train', print_epoch=print_epoch)
+        
+        checkpoints_file = parameters['checkpoints_path'] + '_epoch' + str(epoch) + '-chkpt.tar'
+        print('Saving checkpoint file: %r \n' % (checkpoints_file))
+            
+        torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimiser.state_dict(),
+                'loss': epoch_loss
+                }, checkpoints_file)
+        
         print(f'\n Epoch {epoch} validation... \n')
         val_epoch_loss = run_model(val_iter, model, optimizer, criterion, vocabulary, device=DEVICE, phase='val', print_epoch=print_epoch)
 
@@ -153,6 +172,15 @@ if __name__ == '__main__':
             elapsed_time = time.time() - epoch_start_time
             print(f'Elapsed time in epoch {epoch}: {elapsed_time}' )
             print(f'Iteration {epoch} \t Loss: {epoch_loss} \t Validation loss: {val_epoch_loss}')
+    
+    print('\n\nSaving model to ', parameters['model_path'] )
+    # A common PyTorch convention is to save models using
+    # either a .pt or .pth file extension.
+    torch.save(model.state_dict(), parameters['model_path'] )
+    #model.load_state_dict(torch.load(parameters['model_path'] ))
 
+    param_name = 'encoder.word_embedding'
+    save_param_to_npy(model, param_name, parameters['word_embs_path'])
+    
     elapsed_time = time.time() - start_time
     print(f'{"=" * 20} \n\t Total elapsed time: {elapsed_time} \n {"=" * 20} \n')

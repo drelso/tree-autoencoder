@@ -61,9 +61,9 @@ class TreeLSTM(torch.nn.Module):
         for n in range(node_order.max() + 1):
             self._run_lstm(n, h, c, features, node_order, adjacency_list, edge_order)
         
-        # print('TreeLSTM batch size', batch_size)
-        # print('TreeLSTM h size', h.shape)
-        # print('TreeLSTM c size', c.shape)
+        print('TreeLSTM batch size', batch_size)
+        print('TreeLSTM h size', h.shape)
+        print('TreeLSTM c size', c.shape)
 
         return h, c
 

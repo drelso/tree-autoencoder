@@ -45,8 +45,8 @@ from utils.tree_utils import convert_tree_to_tensors, word_ixs, load_data
 from utils.gpu_status import get_gpu_status
 from treelstm.training_utils import build_vocabulary, numericalise_dataset, list_to_tensor, treedict_to_tensor, construct_dataset_splits, run_model
 
-from model.decoder import Decoder
-from model.tree2seq import Tree2Seq
+from architectures.decoder import Decoder
+from architectures.tree2seq import Tree2Seq
 
 from config_files.config import parameters
 

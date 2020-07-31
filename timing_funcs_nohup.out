@@ -78,3 +78,7 @@ First example train tree: {'features': [21556, 2031, 7231, 16, 2043, 6, 278, 24,
 top1 prediction: e9 18 target: heavens
 top1 prediction: oued 16 target: no
 top1 prediction: reserves 12 target: <eos>
+
+Elapsed time after 335395 samples: 37181.478627204895
+
+Elapsed time after 670790 samples: 86609.68084001541

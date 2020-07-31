@@ -40,3 +40,16 @@ parameters['batch_size'] = 2
 parameters['sort_train_val_data'] = True
 parameters['shuffle_train_val_data'] = True
 parameters['repeat_train_val_iter'] = False
+
+parameters['all_models_dir'] = 'model/'
+parameters['model_name'] = dataset_name + \
+                            '_voc-' + str(parameters['vocab_cutoff']) + \
+                            '_w-emb-' + str(parameters['word_emb_dim']) + \
+                            '_btch-' + str(parameters['batch_size']) + \
+                            '_epch-' + str(parameters['num_epochs'])
+parameters['model_dir'] = parameters['all_models_dir'] + parameters['model_name'] + '/'
+parameters['model_path'] = parameters['model_dir'] + parameters['model_name'] + '.pth'
+parameters['checkpoints_dir'] = parameters['model_dir'] + 'checkpoints/'
+parameters['checkpoints_path'] = parameters['checkpoints_dir'] + parameters['model_name']
+
+parameters['word_embs_path'] = parameters['model_dir'] + 'tree_input_word_embs.npy'

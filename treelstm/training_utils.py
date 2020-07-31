@@ -297,8 +297,9 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
             # process the batch with the treelstm.util.batch_tree_input
             # utility function, else return the single element
             if len(batch_input_list) > 1:
-                print(f'batch input list: {batch_input_list}')
+                print(f'input list: {batch_input_list}')
                 batch_input = batch_tree_input(batch_input_list)
+                print(f'\n\n {"%" * 16} \n batch input: {batch_input}')
             else:
             #     # PREVIOUS IMPLEMENTATION, USED WITH TREE PREPROCESSING
                 batch_input = batch_input_list[0] 
@@ -330,8 +331,19 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
             # with .view"
             # "we slice off the first column of the output
             # and target tensors (<sos>)"
+            print(f'\n\n ^^^^^^^^^^^^ \t PRE output.size() {output.size()}')
+            print(f'\n\n ^^^^^^^^^^^^ \t PRE output {output}')
+            # TODO: SLICE OFF ALL <sos> TOKENS IN BATCH
+            # (REMOVE IXS RELATED TO batch_input['tree_sizes'])
             output = output.view(-1, vocab_size)[1:]#.view(-1)#, output_dim)
-            batch_target_tensor = batch_target_tensor.view(-1)[1:]
+            print(f'\n\n ^^^^^^^^^^^^ \t POST output.size() {output.size()}')
+            print(f'\n\n ^^^^^^^^^^^^ \t POST output {output}')
+            print(f'\n\n ^^^^^^^^^^^^ \t batch_target_tensor.size() {batch_target_tensor.size()}')
+            print(f'\n\n ^^^^^^^^^^^^ \t batch_target_tensor {batch_target_tensor}')
+            if batch_size == 1:
+                batch_target_tensor = batch_target_tensor.view(-1)[1:]
+            else:
+                batch_target_tensor = batch_target_tensor.view(-1)[1:]
 
             loss = criterion(output, batch_target_tensor)
             epoch_loss += loss.item()
