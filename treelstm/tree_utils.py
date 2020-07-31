@@ -11,7 +11,7 @@ import json
 import spacy
 import torch
 
-from treelstm import calculate_evaluation_orders
+from .util import calculate_evaluation_orders
 
 # from .text_utils import onehot_rep
 
@@ -207,9 +207,12 @@ def _gather_node_attributes(node, key, vocabulary=None, is_word=True):#, onehot_
     #     features = [word_ix_rep(node[key], word_ixs_dict)]
     
     if vocabulary:
-        features = [vocabulary.stoi[node[key]]]
+        if node[key] in vocabulary.stoi.keys():
+            features = [vocabulary.stoi[node[key]]]
+        else:
+            features = [vocabulary.unk_index] 
     else:
-        raise ValueException('Vocabulary needs to be specified to continue processing')
+        raise ValueError('Vocabulary needs to be specified to continue processing')
 
     for child in node['children']:
         # features.extend(_gather_node_attributes(child, key, word_ixs_dict, is_word=is_word, onehot_features=onehot_features))

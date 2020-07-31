@@ -1,6 +1,7 @@
 ###
 #
 # Tree2Seq Word Embeddings
+# --- Batch processing
 #
 ###
 
@@ -40,7 +41,7 @@ from treelstm import TreeLSTM, calculate_evaluation_orders
 from treelstm.util import batch_tree_input
 from torch.utils.data import Dataset, DataLoader
 
-from utils.tree_utils import convert_tree_to_tensors, word_ixs, load_data
+from treelstm.tree_utils import convert_tree_to_tensors, word_ixs, load_data
 # from utils.text_utils import word_ixs
 from utils.gpu_status import get_gpu_status
 from treelstm.training_utils import build_vocabulary, numericalise_dataset, list_to_tensor, treedict_to_tensor, construct_dataset_splits, run_model
@@ -48,7 +49,7 @@ from treelstm.training_utils import build_vocabulary, numericalise_dataset, list
 from model.decoder import Decoder
 from model.tree2seq import Tree2Seq
 
-from config_files.config import parameters
+from config_files.config_batch import parameters
 
 
 
@@ -84,6 +85,8 @@ if __name__ == '__main__':
     if not os.path.exists(parameters['num_data_save_path']):
         print(f'No numericalised file found at {parameters["num_data_save_path"]}, creating numericalised file from dataset at {parameters["dataset_path"]}')
         numericalise_dataset(parameters['dataset_path'], parameters['num_data_save_path'], vocabulary)
+    else:
+        print(f'Numericalised file found at {parameters["num_data_save_path"]}')
     
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ## MODEL AND TRAINING INITIALISATION

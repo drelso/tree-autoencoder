@@ -6,7 +6,7 @@
 
 from pathlib import Path
 
-from utils.preprocessing import process_all_datafiles, basic_tokenise, word_counts, build_vocabulary, word_ID, process_data, lightweight_dataset, lt_to_npy, train_validate_split, dataset_sampling, select_synonyms
+from utils.preprocessing import process_all_datafiles, basic_tokenise, word_counts, build_vocabulary_csv, word_ID, process_data, lightweight_dataset, lt_to_npy, train_validate_split, dataset_sampling, select_synonyms
 
 
 if __name__ == '__main__':
@@ -42,7 +42,7 @@ if __name__ == '__main__':
     # CREATE VOCABULARY FILE SORTED BY FREQUENCIES
     # WITH A SPECIFIC CUTOFF (I.E. WORDS APPEARING
     # FEWER TIMES THAN THE THRESHOLD GET TRIMMED)
-    # build_vocabulary(counts_savefile, vocab_file, min_counts=voc_threshold)
+    # build_vocabulary_csv(counts_savefile, vocab_file, min_counts=voc_threshold)
     
     # GET THE ID FOR A WORD IN THE VOCABULARY
     # print('Word ID: ', word_ID('word', vocab_file))

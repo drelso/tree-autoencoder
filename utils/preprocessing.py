@@ -340,7 +340,7 @@ def word_counts(tokenised_data, save_file):
         writer.writerows(counts_list)
 
 
-def build_vocabulary(counts_file, save_file, min_counts=None, vocab_size=10000):
+def build_vocabulary_csv(counts_file, save_file, min_counts=None, vocab_size=10000):
     """
     Builds a vocabulary file from the
     word counts in a text corpus. The
