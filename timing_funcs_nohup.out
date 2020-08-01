@@ -82,3 +82,5 @@ top1 prediction: reserves 12 target: <eos>
 Elapsed time after 335395 samples: 37181.478627204895
 
 Elapsed time after 670790 samples: 86609.68084001541
+
+Elapsed time after 1006185 samples: 147895.70237231255

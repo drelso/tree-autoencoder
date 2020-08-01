@@ -11,8 +11,8 @@ parameters = {}
 
 # CONSTRUCT PATHS TO DATASET, COUNTS, NUMERICALISED DATA
 dataset_dir = 'data/'
-dataset_name = 'SAMPLE_bnc_full_seqlist_deptree'
-# dataset_name = 'bnc_full_seqlist_deptree'
+# dataset_name = 'SAMPLE_bnc_full_seqlist_deptree'
+dataset_name = 'bnc_full_seqlist_deptree'
 parameters['dataset_path'] = dataset_dir + dataset_name + '.json'
 
 parameters['counts_file'] = dataset_dir + 'counts_bnc_full_seqlist_deptree.csv'
@@ -30,7 +30,7 @@ parameters['dec_dropout'] = 0 #0.5
 parameters['num_epochs'] = 3
 parameters['split_ratios'] = [.8, .1, .1]
 
-parameters['batch_size'] = 2
+parameters['batch_size'] = 5
 
 # if True sorts samples based on the length of the sequence
 # to construct batches of the same size. This helps minimise

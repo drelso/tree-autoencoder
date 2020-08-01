@@ -7,3 +7,4 @@ pytorch_tree_lstm.egg-info/
 venv/
 .vscode
 data/
+model/

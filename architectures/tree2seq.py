@@ -93,7 +93,7 @@ class Tree2Seq(nn.Module):
             if print_preds:
                 pred_word = self.vocabulary.itos[top1[0].item()]
                 target_word = self.vocabulary.itos[trg[t][0].item()]
-                print(f'top1 prediction: {pred_word} {20 - len(pred_word)} target: {target_word}', flush=True)
+                print(f'top1 prediction: \t {pred_word} {" " * (20 - len(pred_word))} target: {target_word}', flush=True)
             
             #if teacher forcing, use actual next token as next input
             #if not, use predicted token

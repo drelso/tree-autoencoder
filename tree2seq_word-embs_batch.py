@@ -44,12 +44,33 @@ from torch.utils.data import Dataset, DataLoader
 from treelstm.tree_utils import convert_tree_to_tensors, word_ixs, load_data
 # from utils.text_utils import word_ixs
 from utils.gpu_status import get_gpu_status
-from treelstm.training_utils import build_vocabulary, numericalise_dataset, list_to_tensor, treedict_to_tensor, construct_dataset_splits, run_model
+from treelstm.training_utils import build_vocabulary, numericalise_dataset, list_to_tensor, treedict_to_tensor, construct_dataset_splits, run_model, save_param_to_npy
 
 from architectures.decoder import Decoder
 from architectures.tree2seq import Tree2Seq
 
 from config_files.config_batch import parameters
+
+
+def memory_stats(device=torch.device('cpu')):
+    conversion_rate = 2**30 # CONVERT TO GB
+    # print('\n +++++++++++ torch.cuda.memory_stats\n')
+    # print(torch.cuda.memory_stats(device=device))
+    
+    print('\n +++++++++++ torch.cuda.memory_summary\n')
+    print(torch.cuda.memory_summary(device=device))
+    
+    # print('\n +++++++++++ torch.cuda.memory_snapshot\n')
+    # print(torch.cuda.memory_snapshot())
+
+    print('\n\n +++++++++++ torch.cuda.memory_allocated\n')
+    print((torch.cuda.memory_allocated(device=device)/conversion_rate), 'GB')
+    print('\n\n +++++++++++ torch.cuda.max_memory_allocated\n')
+    print((torch.cuda.max_memory_allocated(device=device)/conversion_rate), 'GB')
+    print('\n\n +++++++++++ torch.cuda.memory_reserved\n')
+    print((torch.cuda.memory_reserved(device=device)/conversion_rate), 'GB')
+    print('\n\n +++++++++++ torch.cuda.max_memory_reserved\n')
+    print((torch.cuda.max_memory_reserved(device=device)/conversion_rate), 'GB')
 
 
 if __name__ == '__main__':
@@ -152,12 +173,18 @@ if __name__ == '__main__':
         
         epoch_start_time = time.time()
 
+        # print(f'{"-" *30} \n MEMORY STATS EPOCH {epoch} **PRE RUN** \n {"-" *30} \n ')
+        # memory_stats(device=DEVICE)
+
         print(f'\n Epoch {epoch} training... \n')
         epoch_loss = run_model(train_iter, model, optimizer, criterion, vocabulary, device=DEVICE, phase='train', print_epoch=print_epoch)
         
         checkpoints_file = parameters['checkpoints_path'] + '_epoch' + str(epoch) + '-chkpt.tar'
         print('Saving checkpoint file: %r \n' % (checkpoints_file))
-            
+        
+        # print(f'{"-" *30} \n MEMORY STATS EPOCH {epoch} **PRE SAVE** \n {"-" *30} \n ')
+        # memory_stats(device=DEVICE)
+
         torch.save({
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
@@ -165,8 +192,14 @@ if __name__ == '__main__':
                 'loss': epoch_loss
                 }, checkpoints_file)
         
+        # print(f'{"-" *30} \n MEMORY STATS EPOCH {epoch} **POST TRAIN** \n {"-" *30} \n ')
+        # memory_stats(device=DEVICE)
+
         print(f'\n Epoch {epoch} validation... \n')
         val_epoch_loss = run_model(val_iter, model, optimizer, criterion, vocabulary, device=DEVICE, phase='val', print_epoch=print_epoch)
+
+        # print(f'{"-" *30} \n MEMORY STATS EPOCH {epoch} **POST VAL** \n {"-" *30} \n ')
+        # memory_stats(device=DEVICE)
 
         if print_epoch:
             elapsed_time = time.time() - epoch_start_time
