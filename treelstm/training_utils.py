@@ -282,6 +282,7 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
             batch_input_list = []
             batch_target = []
             largest_seq = 0
+            batch_size = len(batch)
 
             while len(batch):
                 sample = batch.pop()
@@ -335,16 +336,19 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
             print(f'\n\n ^^^^^^^^^^^^ \t PRE output {output}')
             # TODO: SLICE OFF ALL <sos> TOKENS IN BATCH
             # (REMOVE IXS RELATED TO batch_input['tree_sizes'])
-            output = output.view(-1, vocab_size)[1:]#.view(-1)#, output_dim)
-            print(f'\n\n ^^^^^^^^^^^^ \t POST output.size() {output.size()}')
-            print(f'\n\n ^^^^^^^^^^^^ \t POST output {output}')
-            print(f'\n\n ^^^^^^^^^^^^ \t batch_target_tensor.size() {batch_target_tensor.size()}')
-            print(f'\n\n ^^^^^^^^^^^^ \t batch_target_tensor {batch_target_tensor}')
+            
             if batch_size == 1:
+                output = output.view(-1, vocab_size)[1:]#.view(-1)#, output_dim)
                 batch_target_tensor = batch_target_tensor.view(-1)[1:]
             else:
-                batch_target_tensor = batch_target_tensor.view(-1)[1:]
-
+                output = output[1:].view(-1, vocab_size)
+                # RESHAPING FUNCTION:
+                # 1. REMOVE FIRST ROW OF ELEMENTS (<sos> TOKENS)
+                # 2. TRANSPOSE TO GET CONCATENATION OF SEQUENCES
+                # 3. FLATTEN INTO A SINGLE DIMENSION (.view(-1) DOES NOT WORK
+                #    DUE TO THE TENSOR BEING NON-CONTIGUOUS)
+                batch_target_tensor = batch_target_tensor[1:].T.reshape(-1)
+            
             loss = criterion(output, batch_target_tensor)
             epoch_loss += loss.item()
             

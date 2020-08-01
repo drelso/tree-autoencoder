@@ -161,7 +161,7 @@ if __name__ == '__main__':
         torch.save({
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': optimiser.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
                 'loss': epoch_loss
                 }, checkpoints_file)
         
