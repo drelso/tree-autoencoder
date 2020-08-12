@@ -262,6 +262,7 @@ def mem_check(device, num=0):
     print(f'+++++++++++ torch.cuda.memory_allocated {mem_alloc}GB')
     print(f' +++++++++++ torch.cuda.memory_reserved {mem_reserved}GB \n')
 
+
 def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.device('cpu'), phase='train', print_epoch=True):
     '''
     Run training or validation processes given a 
@@ -323,8 +324,6 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
 
     start_time = time.time()
     
-    # mem_check(device, num=1) # MEM DEBUGGING
-
     with grad_ctx_manager:
         for batch in data_batches:
             batch_input_list = []
@@ -342,8 +341,6 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
                 batch_target.append(proc_seq)
                 i += 1
 
-            # mem_check(device, num=2) # MEM DEBUGGING
-
             # if there is more than one element in the batch input
             # process the batch with the treelstm.util.batch_tree_input
             # utility function, else return the single element
@@ -353,16 +350,12 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
             #     # PREVIOUS IMPLEMENTATION, USED WITH TREE PREPROCESSING
                 batch_input = batch_input_list[0] 
                 # batch_input = treedict_to_tensor(sample.tree, device=device)
-        
-            # mem_check(device, num=3) # MEM DEBUGGING
 
             for seq in batch_target:
                 # PAD THE SEQUENCES IN THE BATCH SO ALL OF THEM
                 # HAVE THE SAME LENGTH
                 len_diff = largest_seq - len(seq)
                 seq.extend([vocabulary.stoi['<pad>']] * len_diff)
-        
-            # mem_check(device, num=4) # MEM DEBUGGING
 
             batch_target_tensor = torch.tensor(batch_target, device=device, dtype=torch.long).transpose(0, 1)
             
@@ -377,11 +370,7 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
                 print(f'\nElapsed time after {i} samples: {elapsed_time}', flush=True)
                 mem_check(device, num=i) # MEM DEBUGGING
             
-            # mem_check(device, num=5) # MEM DEBUGGING
-
             output = model(batch_input, batch_target_tensor, print_preds=print_preds)
-            
-            # mem_check(device, num=6) # MEM DEBUGGING
             
             ## seq2seq.py
             # "as the loss function only works on 2d inputs
@@ -405,16 +394,11 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
                 #    DUE TO THE TENSOR BEING NON-CONTIGUOUS)
                 batch_target_tensor = batch_target_tensor[1:].T.reshape(-1)
 
-            # mem_check(device, num=7) # MEM DEBUGGING
-
             loss = criterion(output, batch_target_tensor)
             epoch_loss += loss.item()
             
             if phase == 'train':
                 loss.backward()
-                # mem_check(device, num=8) # MEM DEBUGGING
                 optimizer.step()
-                # mem_check(device, num=9) # MEM DEBUGGING
             
-            # if n > 10: break
     return epoch_loss / i

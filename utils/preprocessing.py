@@ -12,14 +12,17 @@ import psutil
 import xml.etree.ElementTree as ET
 from collections import Counter
 import csv
+import json
 import numpy as np
 import random
 import re
 
+import spacy
 from nltk.corpus import wordnet as wn # process_data
 
 import contextlib
 
+import torchtext
 
 # Code required for conditional "with", used
 # to only open the synonyms file when not None
@@ -260,6 +263,130 @@ def get_stop_words():
     return stop_words
 
 
+def shuffle_and_subset_dataset(data_path, tags_path, subset_data_path, subset_tags_path, data_size=0.5):
+    '''
+    Shuffle the dataset and save a subset to file
+    while keeping the POS tag alignment.
+    This function is written to work with a pair of
+    files where the first is raw text files with sentences
+    in each line and the corresponding POS tags (space separated)
+    on the same line in the second file
+
+    NOTE: high memory usage, loads the two full datasets into memory
+
+    Requirements
+    ------------
+    import numpy as np
+
+    Parameters
+    ----------
+    data_path : str
+        path to the file containing the raw text sentences
+    tags_path : str
+        path to the file containing the POS tags
+    subset_data_path : str
+        path to the file containing to save the raw text
+        sentences to
+    subset_tags_path : str
+        path to the file containing to save the POS tags to
+    data_size : float, optional
+        percentage of the original dataset to keep in the 
+        subset, a value of 1.0 saves a shuffled version of the
+        full dataset (default: 0.5)
+    '''
+    print(f'Shuffling and subsetting {data_size * 100}% of text data at {data_path} and POS tags at {tags_path}')
+    print(f'Saving datsets at {subset_data_path} and POS tags at {subset_tags_path}')
+
+    with open(data_path, 'r', encoding='utf-8') as d, \
+        open(tags_path, 'r') as td, \
+        open(subset_data_path, 'w+') as sd, \
+        open(subset_tags_path, 'w+') as std:
+
+        text_data = d.readlines()
+        tags_data = td.readlines()
+
+        text_size = len(text_data)
+        tags_size = len(tags_data)
+
+        if text_size != tags_size:
+            raise ValueError(f'Text file size ({text_size}) and POS tags file size ({tags_size}) must be the same')
+
+        print(f'Lines in text data: {len(text_data)} \t Lines in tag data: {len(tags_data)}')
+        num_datapoints = int(len(text_data) * data_size)
+
+        print(f'{num_datapoints} in subset dataset')
+        datapoint_ixs = np.random.choice(text_size, num_datapoints, replace=False)
+
+        random_ix = datapoint_ixs[np.random.randint(num_datapoints)]
+        
+        print('Writing shuffled text data')
+        subset_data = ''
+        for i in datapoint_ixs:
+            subset_data += text_data[i]
+        sd.write(subset_data)
+        verification_text = text_data[random_ix]
+        del subset_data
+        del text_data
+
+        print('Writing shuffled POS tag data')
+        subset_tags = ''
+        for i in datapoint_ixs:
+            subset_tags += tags_data[i]
+        std.write(subset_tags)
+        verification_tags = tags_data[random_ix]
+
+        verif_txt_size = len(verification_text.split(' '))
+        verif_tags_size = len(verification_tags.split(' '))
+        print(f'Verification datapoint at line {random_ix}: \n words in text: {verif_txt_size} \t tags in POS tag data: {verif_tags_size}')
+        print(f'Text at line {random_ix}: \n {verification_text}')
+        print(f'POS tags at line {random_ix}: \n {verification_tags}')
+
+
+def build_vocabulary(counts_file, min_freq=1):
+    ''''
+    Builds a torchtext.vocab object from a CSV file of word
+    counts and an optionally specified frequency threshold
+
+    Requirements
+    ------------
+    import csv
+    from collections import Counter
+    import torchtext
+    
+    Parameters
+    ----------
+    counts_file : str
+        path to counts CSV file
+    min_freq : int, optional
+        frequency threshold, words with counts lower
+        than this will not be included in the vocabulary
+        (default: 1)
+    
+    Returns
+    -------
+    torchtext.vocab.Vocab
+        torchtext Vocab object
+    '''
+    counts_dict = {}
+
+    print(f'Constructing vocabulary from counts file in {counts_file}')
+
+    with open(counts_file, 'r', encoding='utf-8') as f:
+        reader = csv.reader(f)
+        for row in reader:
+            # FIRST COLUMN IS ASSUMED TO BE THE WORD AND
+            # THE SECOND COLUMN IS ASSUMED TO BE THE COUNT
+            counts_dict[row[0]] = int(row[1])
+
+    counts = Counter(counts_dict)
+    del counts_dict
+    
+    vocabulary = torchtext.vocab.Vocab(counts, min_freq=min_freq, specials=['<unk>', '<sos>', '<eos>', '<pad>'])
+    print(f'{len(vocabulary)} unique tokens in vocabulary with (with minimum frequency {min_freq})')
+    
+    return vocabulary
+
+
 def basic_tokenise(datafile, preserve_sents=True):
     """
     Tokenise a raw text file by simply splitting
@@ -457,6 +584,119 @@ def word_ID(word, vocab_file):
             i += 1
     return -1
     
+
+def seqlist_deptree_data(datafile, dataset_savefile):
+    """
+    Convert a raw text file into a dependency tree and a sequence
+    list dictionary and save it to file
+
+    Requirements
+    ------------
+    import spacy
+    import json
+    .text_to_json_tree
+
+    Parameters
+    ----------
+    datafile : str
+        path to the raw text data file
+    dataset_savefile : str
+        path to save the new dataset file to
+    """
+    with open(datafile, 'r', encoding='utf-8') as d:
+        print(f'Reading data in {datafile}')
+        data = d.read().splitlines()
+
+    print(f'Data size: {len(data)}')
+    
+    spacy.prefer_gpu()
+    nlp = spacy.load('en_core_web_sm', disable=['ner', 'textcat'])
+
+    with open(dataset_savefile, 'w+', encoding='utf-8') as s:
+        for i, sent in enumerate(data):
+            tree, seq = text_to_json_tree(sent, nlp)
+            sample = {'seq': seq, 'tree': tree}
+            s.write(json.dumps(sample) + '\n')
+
+            if i % (len(data)/10) == 0:
+                print(f'{i} sentences processed')
+            # if i > 10: break
+    # print(f'Dataset {dataset}')
+
+        # json.dump(dataset, s)
+        # s.write('\n'.join(json.dumps(dataset)))
+        # for sample in dataset:
+        #     s.write(json.dumps(sample) + '\n')
+
+
+def text_to_json_tree(text, nlp):
+    """
+    Process text input with spacy and convert
+    into a dependency tree in JSON format and
+    a list containing the sequence of tokenised
+    words
+
+    Requirements
+    ------------
+    ._build_json_tree
+
+    Parameters
+    ----------
+    text : str
+        raw text to process
+    nlp : spacy model
+        spaCy model to process the raw text with
+    
+    Returns
+    -------
+    JSON tree
+        dependency parse tree in JSON format
+    [str]
+        list of toeknised words
+    """
+    doc = nlp(text)
+    seq = []
+
+    for token in doc:
+        # print(token, token.dep, token.dep_, [child for child in token.children])
+        # print(token, token.idx, token.head, [[child, child.idx] for child in token.children])
+        
+        seq.append(token.text)
+
+        if token.dep_ == 'ROOT':
+            root = token
+            # break
+    
+    tree = _build_json_tree(root)
+
+    return tree, seq # root
+
+
+def _build_json_tree(token):
+    """
+    Recursively construct the JSON tree
+    starting from the root and appending
+    children nodes
+
+    Parameters
+    ----------
+    token : spacy token
+
+    Returns
+    -------
+    {'word' : str, 'label' : str, 'children' : [{}]}
+        dictionary containing dependency parse tree
+    """
+    node = {}
+    node['word'] = token.text
+    node['label'] = token.pos_
+    node['children'] = []
+
+    for child in token.children:
+        node['children'].append(_build_json_tree(child))
+    
+    return node
+
 
 def process_data(raw_data_file, dataset_file, tags_file=None, augm_dataset_file=None, ctx_size=5 ):
     

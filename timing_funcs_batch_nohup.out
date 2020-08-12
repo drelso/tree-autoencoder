@@ -1,1 +1,657 @@
 nohup: ignoring input
+Running on device: cuda
+Constructing vocabulary from counts file in data/counts_bnc_full_seqlist_deptree.csv
+122920 unique tokens in vocabulary with (with minimum frequency 5)
+
+=================== MODEL PARAMETERS: =================== 
+
+dataset_path:                    data/bnc_full_seqlist_deptree.json
+counts_file:                     data/counts_bnc_full_seqlist_deptree.csv
+vocab_cutoff:                    5
+num_data_save_path:              data/bnc_full_seqlist_deptree_numeric_voc-5.json
+embedding_dim:                   768
+word_emb_dim:                    300
+num_layers:                      1
+dec_dropout:                     0
+num_epochs:                      3
+split_ratios:                    [0.8, 0.1, 0.1]
+batch_size:                      5
+sort_train_val_data:             True
+shuffle_train_val_data:          True
+repeat_train_val_iter:           False
+all_models_dir:                  model/
+model_name:                      bnc_full_seqlist_deptree_voc-5_w-emb-300_btch-5_epch-3
+model_dir:                       model/bnc_full_seqlist_deptree_voc-5_w-emb-300_btch-5_epch-3/
+model_path:                      model/bnc_full_seqlist_deptree_voc-5_w-emb-300_btch-5_epch-3/bnc_full_seqlist_deptree_voc-5_w-emb-300_btch-5_epch-3.pth
+checkpoints_dir:                 model/bnc_full_seqlist_deptree_voc-5_w-emb-300_btch-5_epch-3/checkpoints/
+checkpoints_path:                model/bnc_full_seqlist_deptree_voc-5_w-emb-300_btch-5_epch-3/checkpoints/bnc_full_seqlist_deptree_voc-5_w-emb-300_btch-5_epch-3
+word_embs_path:                  model/bnc_full_seqlist_deptree_voc-5_w-emb-300_btch-5_epch-3/tree_input_word_embs.npy
+
+=================== / MODEL PARAMETERS: =================== 
+
+Numericalised file found at data/bnc_full_seqlist_deptree_numeric_voc-5.json
+
+ \\\\\\\\\\\\\ 
+ TRAINABLE PARAMETERS 
+ \\\\\\\\\\\\\ 
+ 
+encoder.word_embedding.weight
+	 -> requires grad
+encoder.W_iou.weight
+	 -> requires grad
+encoder.W_iou.bias
+	 -> requires grad
+encoder.U_iou.weight
+	 -> requires grad
+encoder.W_f.weight
+	 -> requires grad
+encoder.W_f.bias
+	 -> requires grad
+encoder.U_f.weight
+	 -> requires grad
+decoder.embedding.weight
+	 -> requires grad
+decoder.rnn.weight_ih_l0
+	 -> requires grad
+decoder.rnn.weight_hh_l0
+	 -> requires grad
+decoder.rnn.bias_ih_l0
+	 -> requires grad
+decoder.rnn.bias_hh_l0
+	 -> requires grad
+decoder.fc_out.weight
+	 -> requires grad
+decoder.fc_out.bias
+	 -> requires grad
+Constructing dataset from data/bnc_full_seqlist_deptree_numeric_voc-5.json
+Split sizes: 	 train 3353944 	 test 419243 	 validate 419243
+
+First example train seq: [11, 16, 1101, 21, 2821, 21, 542, 504]
+
+First example train tree: {'features': [16, 11, 1101, 2821, 21, 21, 542, 504], 'levels': [0, 1, 1, 1, 2, 2, 3, 4], 'node_order': [4, 0, 0, 3, 0, 2, 1, 0], 'adjacency_list': [[0, 1], [0, 2], [0, 3], [3, 4], [3, 5], [5, 6], [6, 7]], 'edge_order': [4, 4, 4, 3, 3, 2, 1]}
+
+
+ &&&&&&&&&&&&& 
+ ############# 
+ 			 EPOCH ======> 0 
+ &&&&&&&&&&&&& 
+ ############# 
+
+
+
+ Epoch 0 training... 
+
+
+Elapsed time after 335395 samples: 7715.710764884949
+
+
+ Mem check 335395
++++++++++++ torch.cuda.memory_allocated 3.499025344848633GB
+ +++++++++++ torch.cuda.memory_reserved 5.353515625GB 
+
+
+Elapsed time after 670790 samples: 18058.494049072266
+
+
+ Mem check 670790
++++++++++++ torch.cuda.memory_allocated 3.505894184112549GB
+ +++++++++++ torch.cuda.memory_reserved 5.35546875GB 
+
+
+Elapsed time after 1006185 samples: 30887.540333747864
+
+
+ Mem check 1006185
++++++++++++ torch.cuda.memory_allocated 3.5104737281799316GB
+ +++++++++++ torch.cuda.memory_reserved 5.35546875GB 
+
+
+Elapsed time after 1341580 samples: 46496.98605656624
+
+
+ Mem check 1341580
++++++++++++ torch.cuda.memory_allocated 3.5173425674438477GB
+ +++++++++++ torch.cuda.memory_reserved 5.35546875GB 
+
+
+Elapsed time after 1676975 samples: 65030.7779481411
+
+
+ Mem check 1676975
++++++++++++ torch.cuda.memory_allocated 3.52421236038208GB
+ +++++++++++ torch.cuda.memory_reserved 5.357421875GB 
+
+
+Elapsed time after 2012370 samples: 86757.27940392494
+
+
+ Mem check 2012370
++++++++++++ torch.cuda.memory_allocated 3.5333714485168457GB
+ +++++++++++ torch.cuda.memory_reserved 5.357421875GB 
+
+
+Elapsed time after 2347765 samples: 111881.45437335968
+
+
+ Mem check 2347765
++++++++++++ torch.cuda.memory_allocated 3.542530059814453GB
+ +++++++++++ torch.cuda.memory_reserved 5.359375GB 
+
+
+Elapsed time after 2683160 samples: 141057.98155379295
+
+
+ Mem check 2683160
++++++++++++ torch.cuda.memory_allocated 3.553978443145752GB
+ +++++++++++ torch.cuda.memory_reserved 5.361328125GB 
+
+
+Elapsed time after 3018555 samples: 175849.92825222015
+
+
+ Mem check 3018555
++++++++++++ torch.cuda.memory_allocated 3.570009231567383GB
+ +++++++++++ torch.cuda.memory_reserved 5.36328125GB 
+
+Saving checkpoint file: 'model/bnc_full_seqlist_deptree_voc-5_w-emb-300_btch-5_epch-3/checkpoints/bnc_full_seqlist_deptree_voc-5_w-emb-300_btch-5_epch-3_epoch0-chkpt.tar' 
+
+
+ Epoch 0 validation... 
+
+
+Elapsed time after 8385 samples: 19.23712658882141
+
+
+ Mem check 8385
++++++++++++ torch.cuda.memory_allocated 3.494446277618408GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 16770 samples: 40.76141881942749
+
+
+ Mem check 16770
++++++++++++ torch.cuda.memory_allocated 3.4967355728149414GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 25155 samples: 65.82703614234924
+
+
+ Mem check 25155
++++++++++++ torch.cuda.memory_allocated 3.4967355728149414GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 33540 samples: 94.16091585159302
+
+
+ Mem check 33540
++++++++++++ torch.cuda.memory_allocated 3.499025344848633GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 41925 samples: 124.48080396652222
+
+
+ Mem check 41925
++++++++++++ torch.cuda.memory_allocated 3.499025344848633GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 50310 samples: 157.63856410980225
+
+
+ Mem check 50310
++++++++++++ torch.cuda.memory_allocated 3.501314640045166GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 58695 samples: 192.55938982963562
+
+
+ Mem check 58695
++++++++++++ torch.cuda.memory_allocated 3.501314640045166GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 67080 samples: 230.30286622047424
+
+
+ Mem check 67080
++++++++++++ torch.cuda.memory_allocated 3.5036044120788574GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 75465 samples: 270.1437728404999
+
+
+ Mem check 75465
++++++++++++ torch.cuda.memory_allocated 3.5036044120788574GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 83850 samples: 312.60115599632263
+
+
+ Mem check 83850
++++++++++++ torch.cuda.memory_allocated 3.505894184112549GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 92235 samples: 357.2074239253998
+
+
+ Mem check 92235
++++++++++++ torch.cuda.memory_allocated 3.505894184112549GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 100620 samples: 404.36532855033875
+
+
+ Mem check 100620
++++++++++++ torch.cuda.memory_allocated 3.5081839561462402GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 109005 samples: 453.7844994068146
+
+
+ Mem check 109005
++++++++++++ torch.cuda.memory_allocated 3.5081839561462402GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 117390 samples: 506.2908844947815
+
+
+ Mem check 117390
++++++++++++ torch.cuda.memory_allocated 3.5104737281799316GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 125775 samples: 560.4377970695496
+
+
+ Mem check 125775
++++++++++++ torch.cuda.memory_allocated 3.5104737281799316GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 134160 samples: 618.3756160736084
+
+
+ Mem check 134160
++++++++++++ torch.cuda.memory_allocated 3.512763023376465GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 142545 samples: 677.5819890499115
+
+
+ Mem check 142545
++++++++++++ torch.cuda.memory_allocated 3.5150532722473145GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 150930 samples: 741.0751266479492
+
+
+ Mem check 150930
++++++++++++ torch.cuda.memory_allocated 3.5150532722473145GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 159315 samples: 806.3354933261871
+
+
+ Mem check 159315
++++++++++++ torch.cuda.memory_allocated 3.5173425674438477GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 167700 samples: 875.3934915065765
+
+
+ Mem check 167700
++++++++++++ torch.cuda.memory_allocated 3.5173425674438477GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 176085 samples: 947.8920044898987
+
+
+ Mem check 176085
++++++++++++ torch.cuda.memory_allocated 3.519632339477539GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 184470 samples: 1021.989560842514
+
+
+ Mem check 184470
++++++++++++ torch.cuda.memory_allocated 3.521923542022705GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 192855 samples: 1100.2992842197418
+
+
+ Mem check 192855
++++++++++++ torch.cuda.memory_allocated 3.5219216346740723GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 201240 samples: 1180.825801372528
+
+
+ Mem check 201240
++++++++++++ torch.cuda.memory_allocated 3.5242133140563965GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 209625 samples: 1263.707555770874
+
+
+ Mem check 209625
++++++++++++ torch.cuda.memory_allocated 3.52421236038208GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 218010 samples: 1350.7883393764496
+
+
+ Mem check 218010
++++++++++++ torch.cuda.memory_allocated 3.526503086090088GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 226395 samples: 1440.1890614032745
+
+
+ Mem check 226395
++++++++++++ torch.cuda.memory_allocated 3.528792381286621GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 234780 samples: 1532.0379927158356
+
+
+ Mem check 234780
++++++++++++ torch.cuda.memory_allocated 3.528792381286621GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 243165 samples: 1627.8044266700745
+
+
+ Mem check 243165
++++++++++++ torch.cuda.memory_allocated 3.531081199645996GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 251550 samples: 1725.8851342201233
+
+
+ Mem check 251550
++++++++++++ torch.cuda.memory_allocated 3.5333714485168457GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 259935 samples: 1826.7288610935211
+
+
+ Mem check 259935
++++++++++++ torch.cuda.memory_allocated 3.535661220550537GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 268320 samples: 1931.4111394882202
+
+
+ Mem check 268320
++++++++++++ torch.cuda.memory_allocated 3.535661220550537GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 276705 samples: 2039.8071312904358
+
+
+ Mem check 276705
++++++++++++ torch.cuda.memory_allocated 3.5379509925842285GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 285090 samples: 2151.251114845276
+
+
+ Mem check 285090
++++++++++++ torch.cuda.memory_allocated 3.54024076461792GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 293475 samples: 2265.9117193222046
+
+
+ Mem check 293475
++++++++++++ torch.cuda.memory_allocated 3.542530059814453GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 301860 samples: 2383.4184963703156
+
+
+ Mem check 301860
++++++++++++ torch.cuda.memory_allocated 3.5448203086853027GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 310245 samples: 2504.562712430954
+
+
+ Mem check 310245
++++++++++++ torch.cuda.memory_allocated 3.5448203086853027GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 318630 samples: 2629.5817337036133
+
+
+ Mem check 318630
++++++++++++ torch.cuda.memory_allocated 3.547110080718994GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 327015 samples: 2758.6436755657196
+
+
+ Mem check 327015
++++++++++++ torch.cuda.memory_allocated 3.5494003295898438GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 335400 samples: 2892.4536776542664
+
+
+ Mem check 335400
++++++++++++ torch.cuda.memory_allocated 3.553978443145752GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 343785 samples: 3030.951842546463
+
+
+ Mem check 343785
++++++++++++ torch.cuda.memory_allocated 3.556270122528076GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 352170 samples: 3174.6324191093445
+
+
+ Mem check 352170
++++++++++++ torch.cuda.memory_allocated 3.5585594177246094GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 360555 samples: 3323.301973104477
+
+
+ Mem check 360555
++++++++++++ torch.cuda.memory_allocated 3.560849189758301GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 368940 samples: 3479.023900270462
+
+
+ Mem check 368940
++++++++++++ torch.cuda.memory_allocated 3.5654282569885254GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 377325 samples: 3642.3432726860046
+
+
+ Mem check 377325
++++++++++++ torch.cuda.memory_allocated 3.570009231567383GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 385710 samples: 3813.951313495636
+
+
+ Mem check 385710
++++++++++++ torch.cuda.memory_allocated 3.574589729309082GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 394095 samples: 3995.845695734024
+
+
+ Mem check 394095
++++++++++++ torch.cuda.memory_allocated 3.5814571380615234GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 402480 samples: 4191.413393497467
+
+
+ Mem check 402480
++++++++++++ torch.cuda.memory_allocated 3.5938305854797363GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 410865 samples: 4408.20808839798
+
+
+ Mem check 410865
++++++++++++ torch.cuda.memory_allocated 3.6089353561401367GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+Elapsed time in epoch 0: 229703.38463306427
+Iteration 0 	 Loss: 457.6979994442214 	 Validation loss: 718.7058407153422
+
+
+ &&&&&&&&&&&&& 
+ ############# 
+ 			 EPOCH ======> 1 
+ &&&&&&&&&&&&& 
+ ############# 
+
+
+
+ Epoch 1 training... 
+
+
+Elapsed time after 335395 samples: 7693.821173906326
+
+
+ Mem check 335395
++++++++++++ torch.cuda.memory_allocated 3.499025344848633GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 670790 samples: 18035.876121759415
+
+
+ Mem check 670790
++++++++++++ torch.cuda.memory_allocated 3.505894184112549GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 1006185 samples: 30868.42792749405
+
+
+ Mem check 1006185
++++++++++++ torch.cuda.memory_allocated 3.5104737281799316GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 1341580 samples: 46496.14453959465
+
+
+ Mem check 1341580
++++++++++++ torch.cuda.memory_allocated 3.5173425674438477GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 1676975 samples: 65055.41803812981
+
+
+ Mem check 1676975
++++++++++++ torch.cuda.memory_allocated 3.52421236038208GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 2012370 samples: 86831.70540738106
+
+
+ Mem check 2012370
++++++++++++ torch.cuda.memory_allocated 3.5333714485168457GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 2347765 samples: 112343.40465784073
+
+
+ Mem check 2347765
++++++++++++ torch.cuda.memory_allocated 3.542530059814453GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+
+Elapsed time after 2683160 samples: 142164.8455400467
+
+
+ Mem check 2683160
++++++++++++ torch.cuda.memory_allocated 3.553978443145752GB
+ +++++++++++ torch.cuda.memory_reserved 9.974609375GB 
+
+Traceback (most recent call last):
+  File "tree2seq_word-embs_batch.py", line 180, in <module>
+    'model_state_dict': model.state_dict(),
+  File "/home/diegor/tree-autoencoder/treelstm/training_utils.py", line 414, in run_model
+    loss.backward()
+  File "/home/diegor/.local/lib/python3.6/site-packages/torch/tensor.py", line 198, in backward
+    torch.autograd.backward(self, gradient, retain_graph, create_graph)
+  File "/home/diegor/.local/lib/python3.6/site-packages/torch/autograd/__init__.py", line 100, in backward
+    allow_unreachable=True)  # allow_unreachable flag
+RuntimeError: cuDNN error: CUDNN_STATUS_EXECUTION_FAILED (_cudnn_rnn_backward_input at /pytorch/aten/src/ATen/native/cudnn/RNN.cpp:931)
+frame #0: c10::Error::Error(c10::SourceLocation, std::string const&) + 0x46 (0x7f43954e3536 in /home/diegor/.local/lib/python3.6/site-packages/torch/lib/libc10.so)
+frame #1: <unknown function> + 0xf43cf7 (0x7f4337c18cf7 in /home/diegor/.local/lib/python3.6/site-packages/torch/lib/libtorch_cuda.so)
+frame #2: at::native::_cudnn_rnn_backward(at::Tensor const&, c10::ArrayRef<at::Tensor>, long, at::Tensor const&, at::Tensor const&, at::Tensor const&, at::Tensor const&, at::Tensor const&, at::Tensor const&, at::Tensor const&, long, long, long, bool, double, bool, bool, c10::ArrayRef<long>, at::Tensor const&, at::Tensor const&, std::array<bool, 4ul>) + 0x1a9 (0x7f4337c1b009 in /home/diegor/.local/lib/python3.6/site-packages/torch/lib/libtorch_cuda.so)
+frame #3: <unknown function> + 0xfc8d9d (0x7f4337c9dd9d in /home/diegor/.local/lib/python3.6/site-packages/torch/lib/libtorch_cuda.so)
+frame #4: <unknown function> + 0xfca533 (0x7f4337c9f533 in /home/diegor/.local/lib/python3.6/site-packages/torch/lib/libtorch_cuda.so)
+frame #5: <unknown function> + 0x2b081d0 (0x7f43712931d0 in /home/diegor/.local/lib/python3.6/site-packages/torch/lib/libtorch_cpu.so)
+frame #6: <unknown function> + 0x2b7b623 (0x7f4371306623 in /home/diegor/.local/lib/python3.6/site-packages/torch/lib/libtorch_cpu.so)
+frame #7: torch::autograd::generated::CudnnRnnBackward::apply(std::vector<at::Tensor, std::allocator<at::Tensor> >&&) + 0x708 (0x7f4371047d18 in /home/diegor/.local/lib/python3.6/site-packages/torch/lib/libtorch_cpu.so)
+frame #8: <unknown function> + 0x2d89705 (0x7f4371514705 in /home/diegor/.local/lib/python3.6/site-packages/torch/lib/libtorch_cpu.so)
+frame #9: torch::autograd::Engine::evaluate_function(std::shared_ptr<torch::autograd::GraphTask>&, torch::autograd::Node*, torch::autograd::InputBuffer&) + 0x16f3 (0x7f4371511a03 in /home/diegor/.local/lib/python3.6/site-packages/torch/lib/libtorch_cpu.so)
+frame #10: torch::autograd::Engine::thread_main(std::shared_ptr<torch::autograd::GraphTask> const&, bool) + 0x3d2 (0x7f43715127e2 in /home/diegor/.local/lib/python3.6/site-packages/torch/lib/libtorch_cpu.so)
+frame #11: torch::autograd::Engine::thread_init(int) + 0x39 (0x7f437150ae59 in /home/diegor/.local/lib/python3.6/site-packages/torch/lib/libtorch_cpu.so)
+frame #12: torch::autograd::python::PythonEngine::thread_init(int) + 0x38 (0x7f4392768488 in /home/diegor/.local/lib/python3.6/site-packages/torch/lib/libtorch_python.so)
+frame #13: <unknown function> + 0xbd6df (0x7f439a3b66df in /usr/lib/x86_64-linux-gnu/libstdc++.so.6)
+frame #14: <unknown function> + 0x76db (0x7f439f1896db in /lib/x86_64-linux-gnu/libpthread.so.0)
+frame #15: clone + 0x3f (0x7f439f4c2a3f in /lib/x86_64-linux-gnu/libc.so.6)
+

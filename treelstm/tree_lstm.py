@@ -37,8 +37,8 @@ class TreeLSTM(torch.nn.Module):
         # @DR
         self.W_f = torch.nn.Linear(self.word_emb_dim, self.out_features)
         self.U_f = torch.nn.Linear(self.out_features, self.out_features, bias=False)
-        print(f'W_f size {self.word_emb_dim}x{self.out_features}')
-        print(f'U_f size {self.out_features}x{self.out_features}')
+        # print(f'W_f size {self.word_emb_dim}x{self.out_features}')
+        # print(f'U_f size {self.out_features}x{self.out_features}')
 
     def forward(self, features, node_order, adjacency_list, edge_order):
         '''Run TreeLSTM model on a tree data structure with node features
@@ -61,9 +61,9 @@ class TreeLSTM(torch.nn.Module):
         for n in range(node_order.max() + 1):
             self._run_lstm(n, h, c, features, node_order, adjacency_list, edge_order)
         
-        print('TreeLSTM batch size', batch_size)
-        print('TreeLSTM h size', h.shape)
-        print('TreeLSTM c size', c.shape)
+        # print('TreeLSTM batch size', batch_size)
+        # print('TreeLSTM h size', h.shape)
+        # print('TreeLSTM c size', c.shape)
 
         return h, c
 

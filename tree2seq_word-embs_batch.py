@@ -49,31 +49,15 @@ from treelstm.training_utils import build_vocabulary, numericalise_dataset, list
 from architectures.decoder import Decoder
 from architectures.tree2seq import Tree2Seq
 
-from config_files.config_batch import parameters
+from utils.funcs import print_parameters, dir_validation, memory_stats
 
+# from config_files.config_batch import parameters
+from config_files.config_subset_data import parameters
 
-def memory_stats(device=torch.device('cpu')):
-    conversion_rate = 2**30 # CONVERT TO GB
-    # print('\n +++++++++++ torch.cuda.memory_stats\n')
-    # print(torch.cuda.memory_stats(device=device))
-    
-    print('\n +++++++++++ torch.cuda.memory_summary\n')
-    print(torch.cuda.memory_summary(device=device))
-    
-    # print('\n +++++++++++ torch.cuda.memory_snapshot\n')
-    # print(torch.cuda.memory_snapshot())
-
-    print('\n\n +++++++++++ torch.cuda.memory_allocated\n')
-    print((torch.cuda.memory_allocated(device=device)/conversion_rate), 'GB')
-    print('\n\n +++++++++++ torch.cuda.max_memory_allocated\n')
-    print((torch.cuda.max_memory_allocated(device=device)/conversion_rate), 'GB')
-    print('\n\n +++++++++++ torch.cuda.memory_reserved\n')
-    print((torch.cuda.memory_reserved(device=device)/conversion_rate), 'GB')
-    print('\n\n +++++++++++ torch.cuda.max_memory_reserved\n')
-    print((torch.cuda.max_memory_reserved(device=device)/conversion_rate), 'GB')
 
 
 if __name__ == '__main__':
+    '''
     # Model directory housekeeping
     if not os.path.isdir(parameters['all_models_dir']):
         os.mkdir(parameters['all_models_dir'])
@@ -82,6 +66,10 @@ if __name__ == '__main__':
     if not os.path.isdir(parameters['checkpoints_dir']):
         os.mkdir(parameters['checkpoints_dir'])
     if not parameters['checkpoints_dir'].endswith('/'): parameters['checkpoints_dir'] += '/'
+    '''
+    parameters['all_models_dir'] = dir_validation(parameters['all_models_dir'])
+    parameters['model_dir'] = dir_validation(parameters['model_dir'])
+    parameters['checkpoints_dir'] = dir_validation(parameters['checkpoints_dir'])
 
     start_time = time.time()
     
@@ -97,25 +85,17 @@ if __name__ == '__main__':
     input_dim = len(vocabulary)
 
     # PRINT PARAMETERS
-    print('\n=================== MODEL PARAMETERS: =================== \n')
-    for name, value in parameters.items():
-        # num_tabs = int((32 - len(name))/8) + 1
-        # tabs = '\t' * num_tabs
-        num_spaces = 30 - len(name)
-        spaces = ' ' * num_spaces
-        print(f'{name}: {spaces} {value}')
-    print('\n=================== / MODEL PARAMETERS: =================== \n')
-
-
+    print_parameters(parameters)
+    
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ## VOCABULARY CONSTRUCTION AND DATASET NUMERICALISATION
     ##
     ## ONLY NUMERICALISE THE DATA RIGHT IF NO EXISTING FILE IS FOUND
-    if not os.path.exists(parameters['num_data_save_path']):
-        print(f'No numericalised file found at {parameters["num_data_save_path"]}, creating numericalised file from dataset at {parameters["dataset_path"]}')
-        numericalise_dataset(parameters['dataset_path'], parameters['num_data_save_path'], vocabulary)
+    if not os.path.exists(parameters['num_dataset']):
+        print(f'No numericalised file found at {parameters["num_dataset"]}, creating numericalised file from dataset at {parameters["dataset_path"]}')
+        numericalise_dataset(parameters['dataset_path'], parameters['num_dataset'], vocabulary)
     else:
-        print(f'Numericalised file found at {parameters["num_data_save_path"]}')
+        print(f'Numericalised file found at {parameters["num_dataset"]}')
     
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ## MODEL AND TRAINING INITIALISATION
@@ -139,7 +119,7 @@ if __name__ == '__main__':
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ## LOAD AND SPLIT DATASET
     # 'SAMPLE_bnc_full_seqlist_deptree_numeric_voc-1.json'
-    train_data, test_data, val_data = construct_dataset_splits(parameters['num_data_save_path'], vocabulary, split_ratios=parameters['split_ratios'])
+    train_data, test_data, val_data = construct_dataset_splits(parameters['num_dataset'], vocabulary, split_ratios=parameters['split_ratios'])
     
     print('\nFirst example train seq:', train_data.examples[0].seq)
     print('\nFirst example train tree:', train_data.examples[0].tree)
@@ -173,18 +153,12 @@ if __name__ == '__main__':
         
         epoch_start_time = time.time()
 
-        # print(f'{"-" *30} \n MEMORY STATS EPOCH {epoch} **PRE RUN** \n {"-" *30} \n ')
-        # memory_stats(device=DEVICE)
-
         print(f'\n Epoch {epoch} training... \n')
         epoch_loss = run_model(train_iter, model, optimizer, criterion, vocabulary, device=DEVICE, phase='train', print_epoch=print_epoch)
         
         checkpoints_file = parameters['checkpoints_path'] + '_epoch' + str(epoch) + '-chkpt.tar'
         print('Saving checkpoint file: %r \n' % (checkpoints_file))
         
-        # print(f'{"-" *30} \n MEMORY STATS EPOCH {epoch} **PRE SAVE** \n {"-" *30} \n ')
-        # memory_stats(device=DEVICE)
-
         torch.save({
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
@@ -192,15 +166,9 @@ if __name__ == '__main__':
                 'loss': epoch_loss
                 }, checkpoints_file)
         
-        # print(f'{"-" *30} \n MEMORY STATS EPOCH {epoch} **POST TRAIN** \n {"-" *30} \n ')
-        # memory_stats(device=DEVICE)
-
         print(f'\n Epoch {epoch} validation... \n')
         val_epoch_loss = run_model(val_iter, model, optimizer, criterion, vocabulary, device=DEVICE, phase='val', print_epoch=print_epoch)
-
-        # print(f'{"-" *30} \n MEMORY STATS EPOCH {epoch} **POST VAL** \n {"-" *30} \n ')
-        # memory_stats(device=DEVICE)
-
+        
         if print_epoch:
             elapsed_time = time.time() - epoch_start_time
             print(f'Elapsed time in epoch {epoch}: {elapsed_time}' )

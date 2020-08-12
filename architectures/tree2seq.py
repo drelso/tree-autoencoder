@@ -32,9 +32,9 @@ class Tree2Seq(nn.Module):
         trg_len = trg.shape[0]
         trg_vocab_size = self.decoder.output_dim
 
-        print(f'batch_size {batch_size}')
-        print(f'trg shape {trg.shape}')
-        print(f'trg_vocab_size { trg_vocab_size}')
+        # print(f'batch_size {batch_size}')
+        # print(f'trg shape {trg.shape}')
+        # print(f'trg_vocab_size { trg_vocab_size}')
         
         #tensor to store decoder outputs
         outputs = torch.zeros(trg_len, batch_size, trg_vocab_size).to(self.device)
@@ -100,9 +100,3 @@ class Tree2Seq(nn.Module):
             input = trg[t] if teacher_force else top1
 
         return outputs
-
-# def ix_to_word(ix, word_ixs_dict):
-#     for w, i in word_ixs_dict.items():
-#         if i == ix:
-#             return w    
-#     return 'word not found'

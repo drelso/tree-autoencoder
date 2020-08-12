@@ -30,7 +30,7 @@ if __name__ == '__main__':
     
     # PROCESS ALL TEXT FILES AND SAVE TO A SINGLE
     # RAW TEXT FILE
-    process_all_datafiles(bnc_data_dir, dataset_savefile, tags_savefile=tags_savefile, use_headwords=False, include_heads=False, replace_nums=False, replace_unclass=False)
+    # process_all_datafiles(bnc_data_dir, dataset_savefile, tags_savefile=tags_savefile, use_headwords=False, include_heads=False, replace_nums=False, replace_unclass=False)
     
     # TOKENISE THE DATA AND STORE LIST IN A VAR
     # tokenised_data = basic_tokenise(dataset_savefile, preserve_sents=True)
