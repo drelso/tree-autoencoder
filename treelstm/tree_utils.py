@@ -18,8 +18,6 @@ from .util import calculate_evaluation_orders
 ## GLOBAL VARS
 global_n = 0
 
-spacy.prefer_gpu()
-nlp = spacy.load('en_core_web_sm', disable=['ner', 'textcat'])
 
 
 def load_data(dataset_path, word_ixs_dict, device=torch.device('cpu'), onehot_features=True):
@@ -43,7 +41,7 @@ def load_data(dataset_path, word_ixs_dict, device=torch.device('cpu'), onehot_fe
     
     return dataset
 
-
+'''
 ## Seq2Seq [1]
 #
 def tokenize(text):
@@ -51,10 +49,9 @@ def tokenize(text):
     Tokenizes English text from a string into a list of strings (tokens)
     """
     return [tok.text for tok in nlp.tokenizer(text)]
-
 #
 ## / Seq2Seq [1]
-
+'''
 
 def word_ixs(vocab_path):
     # global word_ixs_dict
@@ -93,21 +90,6 @@ def onehot_to_word(onehot_tensor, word_ixs_dict):
     return 'word not found'
 
 
-# def tag_ixs():
-#     tag_ixs_dict = {
-#         'DET' : 0,
-#         'ADJ' : 1,
-#         'NOUN' : 2,
-#         'AUX' : 3,
-#         'VERB' : 4,
-#         'ADP' : 5,
-#         'PROPN' : 6,
-#         'PART' : 7
-#     }
-
-#     return tag_ixs_dict
-
-
 def onehot_rep(item, vocabulary, is_word=True):
 
     # ixs_dict = word_ixs_dict if is_word else tag_ixs()
@@ -144,8 +126,7 @@ def list_to_index_tensor(in_list, word_ixs_dict, device=torch.device('cpu')):
     return index_tensor
 
 
-## @DR
-##
+## [FUNCTIONS ADAPTED FROM https://github.com/unbounce/pytorch-tree-lstm]
 def _label_node_index_depth(node):
     global global_n
     node['index'] = global_n
@@ -187,8 +168,7 @@ def _label_level_index(node, n=0):
     for child in node['children']:
         child['level'] = n
         _label_level_index(child, n)
-##
-## / @DR
+
 
 def _label_node_index(node, n=0):
     node['index'] = n
@@ -196,8 +176,6 @@ def _label_node_index(node, n=0):
     for child in node['children']:
         n += 1
         _label_node_index(child, n)
-
-
 
 
 def _gather_node_attributes(node, key, vocabulary=None, is_word=True):#, onehot_features=True):
@@ -294,82 +272,3 @@ def convert_tree_to_tensors(tree, vocabulary=None, device=torch.device('cpu'), a
             'edge_order': edge_order.tolist(),
         }
 
-
-def convert_tree_to_tensors_OLD(tree, vocabulary=None, device=torch.device('cpu'), as_tensors=True, onehot_features=True):
-    # Label each node with its walk order to match nodes to feature tensor indexes
-    # This modifies the original tree as a side effect
-    
-    ## CHANGED THIS FOR BREADTH FIRST INDEXING
-    # _label_node_index(tree)
-    global global_n
-    global_n = 0
-    _label_node_index_depth(tree)
-
-    ## LABEL NODE'S LEVEL IN THE TREE
-    _label_level_index(tree)
-
-    # print('Indexed tree', tree)
-
-    words = _gather_node_attributes_OLD(tree, 'word',  vocabulary=vocabulary, onehot_features=onehot_features)
-    
-    # onehot_words = [onehot_rep(word) for word in words]
-
-    # labels = _gather_node_attributes(tree, 'label', is_word=False)
-    # onehot_labels = [onehot_rep(label, is_word=False) for label in labels]
-    global global_level_list
-    global_level_list = []
-    _gather_level_list(tree)
-    levels = global_level_list
-    # print('levels', levels)
-
-    adjacency_list = _gather_adjacency_list(tree)
-
-    node_order, edge_order = calculate_evaluation_orders(adjacency_list, len(words))
-    has_children = np.array(node_order, dtype=bool)
-    # print(f'has_children {has_children}')
-
-    if as_tensors:
-        return {
-            'features': torch.tensor(words, device=device, dtype=torch.long),#int),
-            # 'labels': torch.tensor(labels, device=device, dtype=torch.float32),
-            'levels': torch.tensor(levels, device=device, dtype=torch.long),#int),
-            'node_order': torch.tensor(node_order, device=device, dtype=torch.long),#int),
-            'adjacency_list': torch.tensor(adjacency_list, device=device, dtype=torch.long),#int),
-            'edge_order': torch.tensor(edge_order, device=device, dtype=torch.long)#int),
-        }
-    else:
-        return {
-            'features': words,
-            # 'labels': torch.tensor(labels, device=device, dtype=torch.float32),
-            'levels': levels,
-            'node_order': node_order.tolist(),
-            'adjacency_list': adjacency_list,
-            'edge_order': edge_order.tolist(),
-        }
-
-
-def text_to_json_tree(text):
-    global nlp
-    doc = nlp(text)
-
-    for token in doc:
-        # print(token, token.dep, token.dep_, [child for child in token.children])
-        print(token, token.idx, token.head, [[child, child.idx] for child in token.children])
-        
-        if token.dep_ == 'ROOT':
-            root = token
-    
-    tree = _build_json_tree(root)
-
-    return tree # root
-
-
-def _build_json_tree(token):
-    node = {}
-    node['word'] = token.text
-    node['children'] = []
-
-    for child in token.children:
-        node['children'].append(_build_json_tree(child))
-    
-    return node

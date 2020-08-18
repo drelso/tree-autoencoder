@@ -20,6 +20,9 @@ import psutil
 if __name__ == '__main__':
     print_parameters(parameters)
     
+    ## TODO: include preprocessing step to convert BNC XML
+    ##       files to a single raw text file
+
     ## SHUFFLE AND SUBSET DATASET
     if parameters['use_data_subset']:
         print(f'Using data subset: {parameters["data_subset_size"] * 100}% of full dataset')

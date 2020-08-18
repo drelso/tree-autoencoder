@@ -2,6 +2,8 @@
 PyTorch Child-Sum Tree LSTM model
 
 See Tai et al. 2015 https://arxiv.org/abs/1503.00075 for model description.
+
+[IMPLEMENTATION ADAPTED FROM https://github.com/unbounce/pytorch-tree-lstm]
 """
 
 import torch
