@@ -36,7 +36,7 @@ dataset_name = bnc_data_name + '_seqlist_deptree'
 parameters['dataset_path'] = dataset_dir + dataset_name + '.json'
 
 bnc_counts = parameters['bnc_data_dir'] + 'counts_bnc_full_seqlist_deptree.csv'
-bnc_subset_counts = parameters['bnc_data_dir'] + 'counts_' + subset_data_name + '.csv'
+bnc_subset_counts = dataset_dir + 'counts_' + subset_data_name + '.csv'
 parameters['counts_file'] = bnc_subset_counts if parameters['use_data_subset'] else bnc_counts
 
 # parameters['counts_file'] = dataset_dir + 'counts_bnc_full_seqlist_deptree.csv'
