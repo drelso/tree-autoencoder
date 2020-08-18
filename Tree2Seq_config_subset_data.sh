@@ -38,7 +38,7 @@ export PYTHONPATH=$HOME/python_src/bin
 export PATH=$HOME/python_src/bin:$PATH
 #source "$HOME/Scratch/sculpting-word-embeddings/envs/skipgram_syns_env_Scratch/bin/activate" --always-copy
 #!/usr/bin/env python3
-/usr/bin/time --verbose python3 $HOME/Scratch/tree-autoencoder/tree2seq_wird-embs_batch.py # this prints the usage of the program
+/usr/bin/time --verbose python3 $HOME/Scratch/tree-autoencoder/tree2seq_word-embs_batch.py # this prints the usage of the program
 # 10. Preferably, tar-up (archive) all output files onto the shared scratch area
 tar zcvf $HOME/Scratch/myriad_output/files_from_job_$JOB_ID.tar.gz $TMPDIR
 # Make sure you have given enough time for the copy to complete!
