@@ -5,9 +5,9 @@
 # 1. Request a number of GPU cards, in this case 2 (the maximum)
 #$ -l gpu=1
 # 2. Request ten minutes of wallclock time (format hours:minutes:seconds).
-#$ -l h_rt=48:00:00
+#$ -l h_rt=45:00:00
 # 3. Request 12 gigabytes of RAM (must be an integer)
-#$ -l mem=12G
+#$ -l mem=20G
 # 4. Request 15 gigabyte of TMPDIR space (default is 10 GB)
 #$ -l tmpfs=15G
 # 5. Set the name of the job.
@@ -34,11 +34,11 @@ echo '$HOME'
 echo $HOME
 #export PYTHONPATH=/home/uczcdra/python_src/Python-3.7.4
 #export PATH=/home/uczcdra/python_src/Python-3.7.4:$PATH
-export PYTHONPATH=$HOME/python_src/bin
-export PATH=$HOME/python_src/bin:$PATH
-#source "$HOME/Scratch/sculpting-word-embeddings/envs/skipgram_syns_env_Scratch/bin/activate" --always-copy
-#!/usr/bin/env python3
-/usr/bin/time --verbose python3 $HOME/Scratch/tree-autoencoder/tree2seq_word-embs_batch.py # this prints the usage of the program
+export PYTHONPATH=$HOME/Scratch/tree-autoencoder/myriad_venv/bin/
+export PATH=$HOME/Scratch/tree-autoencoder/myriad_venv/bin/:$PATH
+source "$HOME/Scratch/tree-autoencoder/myriad_venv/bin/activate" --always-copy
+which python
+/usr/bin/time --verbose python $HOME/Scratch/tree-autoencoder/tree2seq_word-embs_batch.py # this prints the usage of the program
 # 10. Preferably, tar-up (archive) all output files onto the shared scratch area
 tar zcvf $HOME/Scratch/myriad_output/files_from_job_$JOB_ID.tar.gz $TMPDIR
 # Make sure you have given enough time for the copy to complete!

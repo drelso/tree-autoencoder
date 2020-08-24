@@ -271,6 +271,8 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
     Requirements
     ------------
     treedict_to_tensor (local function)
+    dummy_context_mgr (local function)
+    
 
     Parameters
     ----------
@@ -330,6 +332,7 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
             batch_target = []
             largest_seq = 0
             batch_size = len(batch)
+            if phase == 'train': optimizer.zero_grad()
 
             while len(batch):
                 sample = batch.pop()
@@ -368,7 +371,7 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
             if print_epoch and checkpoint_sample:
                 elapsed_time = time.time() - start_time
                 print(f'\nElapsed time after {i} samples: {elapsed_time}', flush=True)
-                mem_check(device, num=i) # MEM DEBUGGING
+                # mem_check(device, num=i) # MEM DEBUGGING
             
             output = model(batch_input, batch_target_tensor, print_preds=print_preds)
             
