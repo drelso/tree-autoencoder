@@ -254,13 +254,16 @@ def dummy_context_mgr():
     yield None
 
 
-def mem_check(device, num=0):
+def mem_check(device, legend=0):
     conversion_rate = 2**30 # CONVERT TO GB
-    print(f'\n\n Mem check {num}')
+    print(f'\n\n Mem check {legend}')
     mem_alloc = torch.cuda.memory_allocated(device=device) / conversion_rate
     mem_reserved = torch.cuda.memory_reserved(device=device) / conversion_rate
-    print(f'+++++++++++ torch.cuda.memory_allocated {mem_alloc}GB')
-    print(f' +++++++++++ torch.cuda.memory_reserved {mem_reserved}GB \n')
+    os.system('nvidia-smi')
+    print(f'+++++++++++ torch.cuda.memory_allocated {mem_alloc}GB', flush=True)
+    print(f' +++++++++++ torch.cuda.memory_reserved {mem_reserved}GB \n', flush=True)
+
+
 
 
 def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.device('cpu'), phase='train', print_epoch=True):
@@ -272,7 +275,7 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
     ------------
     treedict_to_tensor (local function)
     dummy_context_mgr (local function)
-    
+    repackage_hidden (local function)
 
     Parameters
     ----------
@@ -332,7 +335,9 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
             batch_target = []
             largest_seq = 0
             batch_size = len(batch)
-            if phase == 'train': optimizer.zero_grad()
+            if phase == 'train':
+                optimizer.zero_grad()
+
 
             while len(batch):
                 sample = batch.pop()
@@ -371,9 +376,10 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
             if print_epoch and checkpoint_sample:
                 elapsed_time = time.time() - start_time
                 print(f'\nElapsed time after {i} samples: {elapsed_time}', flush=True)
-                # mem_check(device, num=i) # MEM DEBUGGING
+                mem_check(device, legend=str(i) + ' samples') # MEM DEBUGGING
+                get_gpu_status()
             
-            output = model(batch_input, batch_target_tensor, print_preds=print_preds)
+            output, enc_hidden, dec_hidden = model(batch_input, batch_target_tensor, print_preds=print_preds)
             
             ## seq2seq.py
             # "as the loss function only works on 2d inputs
@@ -403,5 +409,29 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
             if phase == 'train':
                 loss.backward()
                 optimizer.step()
+                ## MEMORY DEBUGGING
+                # ATTEMPT TO PREVENT GPU MEMORY OVERFLOW BY
+                # DETACHING THE HIDDEN STATES FROM THE MODEL,
+                # WHICH MAKES BPTT TRACK ONLY THE CURRENT BATCH
+                # INSTEAD OF THE FULL DATASET HISTORY
+                # (FROM https://discuss.pytorch.org/t/solved-why-we-need-to-detach-variable-which-contains-hidden-representation/1426/3)
+                enc_hidden = repackage_hidden(enc_hidden)
+                dec_hidden = repackage_hidden(dec_hidden)
             
     return epoch_loss / i
+
+
+def repackage_hidden(h):
+        """
+        Wraps hidden states in new Tensors, to detach them from their history.
+        
+        NOTE: FUNCTION TAKEN FROM THE 'word_language_model' PYTORCH TUTORIAL AT
+            https://github.com/pytorch/examples/blob/e7870c1fd4706174f52a796521382c9342d4373f/word_language_model/main.py
+            USED TO FREE UP MEMORY BY PREVENTING BPTT TO BACKPROP THROUGH THE
+            ENTIRE DATASET AND INSTEAD ONLY FOCUS ON THE CURRENT BATCH 
+        """
+
+        if isinstance(h, torch.Tensor):
+            return h.detach()
+        else:
+            return tuple(repackage_hidden(v) for v in h)

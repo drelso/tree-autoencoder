@@ -60,7 +60,7 @@ parameters['dec_dropout'] = 0 #0.5
 parameters['num_epochs'] = 3
 parameters['split_ratios'] = [.8, .1, .1]
 
-parameters['batch_size'] = 5
+parameters['batch_size'] = 15
 
 # if True sorts samples based on the length of the sequence
 # to construct batches of the same size. This helps minimise

@@ -35,6 +35,7 @@ class Tree2Seq(nn.Module):
         # print(f'batch_size {batch_size}')
         # print(f'trg shape {trg.shape}')
         # print(f'trg_vocab_size { trg_vocab_size}')
+        # print(f'features_size: { src_tree["features"].size()}')
         
         #tensor to store decoder outputs
         outputs = torch.zeros(trg_len, batch_size, trg_vocab_size).to(self.device)
@@ -52,7 +53,7 @@ class Tree2Seq(nn.Module):
         #first input to the decoder is the <sos> tokens
         input = trg[0,:]
         
-        # print(f'enc_hidden size: {enc_hidden.size()}')
+        # print(f'enc_hidden size: {enc_hidden.size()}') # [features_size x hid_dim]
         # print(f'enc_cell size: {enc_cell.size()}')
 
         if batch_size == 1:
@@ -69,7 +70,7 @@ class Tree2Seq(nn.Module):
             dec_hidden = enc_hidden[root_indices].unsqueeze(0)
             dec_cell = enc_cell[root_indices].unsqueeze(0)
         
-        # print(f'dec_hidden size: {dec_hidden.size()}')
+        # print(f'dec_hidden size: {dec_hidden.size()}') # [1 x batch_size x hid_dim]
         # print(f'dec_cell size: {dec_cell.size()}')
 
         for t in range(1, trg_len):
@@ -99,4 +100,4 @@ class Tree2Seq(nn.Module):
             #if not, use predicted token
             input = trg[t] if teacher_force else top1
 
-        return outputs
+        return outputs, enc_hidden, dec_hidden

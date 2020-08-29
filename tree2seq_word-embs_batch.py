@@ -44,7 +44,7 @@ from torch.utils.data import Dataset, DataLoader
 from treelstm.tree_utils import convert_tree_to_tensors, word_ixs, load_data
 # from utils.text_utils import word_ixs
 from utils.gpu_status import get_gpu_status
-from treelstm.training_utils import build_vocabulary, numericalise_dataset, list_to_tensor, treedict_to_tensor, construct_dataset_splits, run_model, save_param_to_npy
+from treelstm.training_utils import build_vocabulary, numericalise_dataset, list_to_tensor, treedict_to_tensor, construct_dataset_splits, run_model, save_param_to_npy, mem_check
 
 from architectures.decoder import Decoder
 from architectures.tree2seq import Tree2Seq
@@ -57,16 +57,6 @@ from config_files.config_subset_data import parameters
 
 
 if __name__ == '__main__':
-    '''
-    # Model directory housekeeping
-    if not os.path.isdir(parameters['all_models_dir']):
-        os.mkdir(parameters['all_models_dir'])
-    if not os.path.isdir(parameters['model_dir']):
-        os.mkdir(parameters['model_dir'])
-    if not os.path.isdir(parameters['checkpoints_dir']):
-        os.mkdir(parameters['checkpoints_dir'])
-    if not parameters['checkpoints_dir'].endswith('/'): parameters['checkpoints_dir'] += '/'
-    '''
     parameters['all_models_dir'] = dir_validation(parameters['all_models_dir'])
     parameters['model_dir'] = dir_validation(parameters['model_dir'])
     parameters['checkpoints_dir'] = dir_validation(parameters['checkpoints_dir'])
@@ -81,6 +71,8 @@ if __name__ == '__main__':
 
     # CONSTRUCT VOCABULARY
     vocabulary = build_vocabulary(parameters['counts_file'], min_freq=parameters['vocab_cutoff'])
+    print(f'Vocabulary contains {len(vocabulary)} distinct tokens, constructed with a frequency cutoff of {parameters["vocab_cutoff"]} and counts file at {parameters["counts_file"]}')
+    
     # parameters['input_dim'] = len(vocabulary)
     input_dim = len(vocabulary)
 
@@ -156,8 +148,11 @@ if __name__ == '__main__':
         print(f'\n Epoch {epoch} training... \n')
         epoch_loss = run_model(train_iter, model, optimizer, criterion, vocabulary, device=DEVICE, phase='train', print_epoch=print_epoch)
         
+        mem_check(DEVICE, legend='Post-epoch, pre saving checkpoint') # MEMORY DEBUGGING!!!
+        get_gpu_status() # MEMORY DEBUGGING!!!
+
         checkpoints_file = parameters['checkpoints_path'] + '_epoch' + str(epoch) + '-chkpt.tar'
-        print('Saving checkpoint file: %r \n' % (checkpoints_file))
+        print(f'Saving epoch checkpoint file: {checkpoints_file} \n', flush=True)
         
         torch.save({
                 'epoch': epoch,
@@ -166,13 +161,17 @@ if __name__ == '__main__':
                 'loss': epoch_loss
                 }, checkpoints_file)
         
+        mem_check(DEVICE, legend='Post-epoch, post saving checkpoint') # MEMORY DEBUGGING!!!
+        
         print(f'\n Epoch {epoch} validation... \n')
         val_epoch_loss = run_model(val_iter, model, optimizer, criterion, vocabulary, device=DEVICE, phase='val', print_epoch=print_epoch)
         
+        mem_check(DEVICE, legend='Post validation') # MEMORY DEBUGGING!!!
+
         if print_epoch:
             elapsed_time = time.time() - epoch_start_time
             print(f'Elapsed time in epoch {epoch}: {elapsed_time}' )
-            print(f'Iteration {epoch} \t Loss: {epoch_loss} \t Validation loss: {val_epoch_loss}')
+            print(f'Iteration {epoch} \t Loss: {epoch_loss} \t Validation loss: {val_epoch_loss}', flush=True)
     
     print('\n\nSaving model to ', parameters['model_path'] )
     # A common PyTorch convention is to save models using

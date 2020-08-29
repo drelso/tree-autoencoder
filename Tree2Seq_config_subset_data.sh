@@ -20,20 +20,20 @@
 # 7. Your work *must* be done in $TMPDIR 
 cd $TMPDIR
 # 8. load the cuda module (in case you are running a CUDA program
-# module unload compilers mpi
-# module load compilers/gnu/4.9.2
-# module load cuda/9.0.176-patch4/gnu-4.9.2
+module unload compilers mpi
+module load compilers/gnu/4.9.2
+module load compilers/intel/2020/release
+module load cuda/10.1.243/gnu-4.9.2
+module load cudnn/7.5.0.56/cuda-10.1
 # 9. Run the application - the line below is just a random example.
 #virtualenv envs/skipgram_syns_env
 echo 'MYRIAD JOB DETAILS:'
 echo '$PATH:'
 echo $PATH
 echo 'Available compilers'
-module avail compilers
+echo module avail compilers
 echo '$HOME'
 echo $HOME
-#export PYTHONPATH=/home/uczcdra/python_src/Python-3.7.4
-#export PATH=/home/uczcdra/python_src/Python-3.7.4:$PATH
 export PYTHONPATH=$HOME/Scratch/tree-autoencoder/myriad_venv/bin/
 export PATH=$HOME/Scratch/tree-autoencoder/myriad_venv/bin/:$PATH
 source "$HOME/Scratch/tree-autoencoder/myriad_venv/bin/activate" --always-copy
