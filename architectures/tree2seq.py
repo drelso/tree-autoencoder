@@ -22,7 +22,7 @@ class Tree2Seq(nn.Module):
         # torchtext.vocab object
         self.vocabulary = vocabulary
         
-    def forward(self, src_tree, trg, teacher_forcing_ratio = 0.5, print_preds=False):
+    def forward(self, src_tree, trg, teacher_forcing_ratio = 0.5, phase='train', print_preds=False):
         #src = [src len, batch size]
         #trg = [trg len, batch size]
         #teacher_forcing_ratio is probability to use teacher forcing
@@ -73,6 +73,8 @@ class Tree2Seq(nn.Module):
         # print(f'dec_hidden size: {dec_hidden.size()}') # [1 x batch_size x hid_dim]
         # print(f'dec_cell size: {dec_cell.size()}')
 
+        NUM_CORRECT_PREDS = 0
+
         for t in range(1, trg_len):
             
             #insert input token embedding, previous hidden and previous cell states
@@ -91,6 +93,12 @@ class Tree2Seq(nn.Module):
             #get the highest predicted token from our predictions
             top1 = output.argmax(1)
             
+            if phase == 'val':
+                pred_word = self.vocabulary.itos[top1[0].item()]
+                target_word = self.vocabulary.itos[trg[t][0].item()]
+                if pred_word == target_word: NUM_CORRECT_PREDS += 1
+
+
             if print_preds:
                 pred_word = self.vocabulary.itos[top1[0].item()]
                 target_word = self.vocabulary.itos[trg[t][0].item()]
@@ -100,4 +108,4 @@ class Tree2Seq(nn.Module):
             #if not, use predicted token
             input = trg[t] if teacher_force else top1
 
-        return outputs, enc_hidden, dec_hidden
+        return outputs, enc_hidden, dec_hidden, NUM_CORRECT_PREDS

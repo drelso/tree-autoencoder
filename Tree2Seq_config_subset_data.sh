@@ -31,7 +31,7 @@ echo 'MYRIAD JOB DETAILS:'
 echo '$PATH:'
 echo $PATH
 echo 'Available compilers'
-echo module avail compilers
+module avail compilers
 echo '$HOME'
 echo $HOME
 export PYTHONPATH=$HOME/Scratch/tree-autoencoder/myriad_venv/bin/

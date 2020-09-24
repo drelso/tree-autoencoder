@@ -342,7 +342,7 @@ def shuffle_and_subset_dataset(data_path, tags_path, subset_data_path, subset_ta
         print(f'POS tags at line {random_ix}: \n {verification_tags}')
 
 
-def build_vocabulary(counts_file, min_freq=1):
+def build_vocabulary(counts_file, vocab_ixs_file, min_freq=1):
     ''''
     Builds a torchtext.vocab object from a CSV file of word
     counts and an optionally specified frequency threshold
@@ -384,6 +384,12 @@ def build_vocabulary(counts_file, min_freq=1):
     vocabulary = torchtext.vocab.Vocab(counts, min_freq=min_freq, specials=['<unk>', '<sos>', '<eos>', '<pad>'])
     print(f'{len(vocabulary)} unique tokens in vocabulary with (with minimum frequency {min_freq})')
     
+    # SAVE LIST OF VOCABULARY ITEMS AND INDICES TO FILE
+    with open(vocab_ixs_file, 'w+', encoding='utf-8') as v:
+        vocabulary_indices = [[i, w] for i,w in enumerate(vocabulary.itos)]
+        print(f'Writing vocabulary indices to {vocab_ixs_file}')
+        csv.writer(v).writerows(vocabulary_indices)
+
     return vocabulary
 
 

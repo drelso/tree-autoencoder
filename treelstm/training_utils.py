@@ -10,6 +10,7 @@ import contextlib
 import json
 import time
 import math
+import os
 
 import numpy as np
 
@@ -27,7 +28,7 @@ from .util import batch_tree_input
 default_device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-def build_vocabulary(counts_file, min_freq=1):
+def build_vocabulary(counts_file, vocab_ixs_file, min_freq=1):
     ''''
     Builds a torchtext.vocab object from a CSV file of word
     counts and an optionally specified frequency threshold
@@ -69,6 +70,12 @@ def build_vocabulary(counts_file, min_freq=1):
     vocabulary = torchtext.vocab.Vocab(counts, min_freq=min_freq, specials=['<unk>', '<sos>', '<eos>', '<pad>'])
     print(f'{len(vocabulary)} unique tokens in vocabulary with (with minimum frequency {min_freq})')
     
+    # SAVE LIST OF VOCABULARY ITEMS AND INDICES TO FILE
+    with open(vocab_ixs_file, 'w+', encoding='utf-8') as v:
+        vocabulary_indices = [[i, w] for i,w in enumerate(vocabulary.itos)]
+        print(f'Writing vocabulary indices to {vocab_ixs_file}')
+        csv.writer(v).writerows(vocabulary_indices)
+
     return vocabulary
 
 
@@ -266,7 +273,7 @@ def mem_check(device, legend=0):
 
 
 
-def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.device('cpu'), phase='train', print_epoch=True):
+def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.device('cpu'), phase='train', max_seq_len=200, print_epoch=True):
     '''
     Run training or validation processes given a 
     model and a data iterator.
@@ -329,15 +336,23 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
 
     start_time = time.time()
     
+    print(f'Running {phase} phase ({len(data_iter)} batches of size {data_iter.batch_size})...')
+    
+    largest_batch_seq = 0
+    batches_skipped_lengths = []
+
+    total_num_words = 0
+    total_correct_preds = 0
+
     with grad_ctx_manager:
-        for batch in data_batches:
+        for batch_num, batch in enumerate(data_batches):
             batch_input_list = []
             batch_target = []
             largest_seq = 0
+            batch_seq_len = 0
             batch_size = len(batch)
             if phase == 'train':
                 optimizer.zero_grad()
-
 
             while len(batch):
                 sample = batch.pop()
@@ -345,9 +360,17 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
                 batch_input_list.append(treedict_to_tensor(sample.tree, device=device))
                 
                 proc_seq = [vocabulary.stoi['<sos>']] + sample.seq + [vocabulary.stoi['<eos>']]
+                batch_seq_len += len(proc_seq)
                 if len(proc_seq) > largest_seq: largest_seq = len(proc_seq)
                 batch_target.append(proc_seq)
                 i += 1
+
+            if largest_seq > max_seq_len:
+                # Skip batch if sequence length is larger than allowed
+                batches_skipped_lengths.append(largest_seq)
+                continue
+
+            if batch_seq_len > largest_batch_seq: largest_batch_seq = batch_seq_len
 
             # if there is more than one element in the batch input
             # process the batch with the treelstm.util.batch_tree_input
@@ -367,20 +390,23 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
 
             batch_target_tensor = torch.tensor(batch_target, device=device, dtype=torch.long).transpose(0, 1)
             
-            if print_epoch and i == 1:
+            if print_epoch and batch_num == 0:
                 print_preds = True
             else:
                 print_preds = False
 
-            checkpoint_sample = not i % math.ceil(len(data_iter) / 10)
-            if print_epoch and checkpoint_sample:
+            checkpoint_sample = not i % math.ceil(len(data_iter) / 10) # or batch_num > len(data_iter) - 1
+            if print_epoch and checkpoint_sample and phase == 'train':
                 elapsed_time = time.time() - start_time
-                print(f'\nElapsed time after {i} samples: {elapsed_time}', flush=True)
+                print(f'\nElapsed time after {i} samples ({batch_num} batches): {elapsed_time} \n\t Largest batch: {largest_batch_seq}', flush=True)
                 mem_check(device, legend=str(i) + ' samples') # MEM DEBUGGING
-                get_gpu_status()
             
-            output, enc_hidden, dec_hidden = model(batch_input, batch_target_tensor, print_preds=print_preds)
+            # num_correct_preds IS ONLY CALCULATED IN VALIDATION PHASE, IN TRAINING IT WILL ALWAYS EQUAL 0
+            output, enc_hidden, dec_hidden, num_correct_preds = model(batch_input, batch_target_tensor, print_preds=print_preds)
             
+            total_num_words += batch_seq_len
+            total_correct_preds += num_correct_preds
+
             ## seq2seq.py
             # "as the loss function only works on 2d inputs
             # with 1d targets we need to flatten each of them
@@ -404,7 +430,6 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
                 batch_target_tensor = batch_target_tensor[1:].T.reshape(-1)
 
             loss = criterion(output, batch_target_tensor)
-            epoch_loss += loss.item()
             
             if phase == 'train':
                 loss.backward()
@@ -415,9 +440,15 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
                 # WHICH MAKES BPTT TRACK ONLY THE CURRENT BATCH
                 # INSTEAD OF THE FULL DATASET HISTORY
                 # (FROM https://discuss.pytorch.org/t/solved-why-we-need-to-detach-variable-which-contains-hidden-representation/1426/3)
-                enc_hidden = repackage_hidden(enc_hidden)
-                dec_hidden = repackage_hidden(dec_hidden)
+            enc_hidden = repackage_hidden(enc_hidden)
+            dec_hidden = repackage_hidden(dec_hidden)
             
+            epoch_loss += loss.detach().item()
+        mem_check(device, legend='Finished processing batches') # MEM DEBUGGING
+        print(f'Skipped {len(batches_skipped_lengths)} batches with lengths: {batches_skipped_lengths}', flush=True)
+
+        if phase == 'val':
+            print(f'Validation accuracy: {total_correct_preds / total_num_words} \t ({total_correct_preds}/{total_num_words} correctly predicted)')
     return epoch_loss / i
 
 

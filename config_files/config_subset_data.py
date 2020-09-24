@@ -55,9 +55,10 @@ parameters['embedding_dim'] = 768 # Hidden unit dimension TODO: CHANGE TO 768? (
 parameters['word_emb_dim'] = 300 # TODO: CHANGE TO 300 # PREV 50
 
 # SEQ2SEQ TRAINING
+parameters['learning_rate'] = 0.01
 parameters['num_layers'] = 1
-parameters['dec_dropout'] = 0 #0.5
-parameters['num_epochs'] = 3
+parameters['dec_dropout'] = 0 # 0.5 NON-ZERO ONLY WORKS IF NUM_LAYERS > 1
+parameters['num_epochs'] = 10
 parameters['split_ratios'] = [.8, .1, .1]
 
 parameters['batch_size'] = 15
@@ -76,10 +77,17 @@ parameters['model_name'] = dataset_name + \
                             '_voc-' + str(parameters['vocab_cutoff']) + \
                             '_w-emb-' + str(parameters['word_emb_dim']) + \
                             '_btch-' + str(parameters['batch_size']) + \
-                            '_epch-' + str(parameters['num_epochs'])
+                            '_epch-' + str(parameters['num_epochs']) + \
+                            '_drpt-' + str(parameters['dec_dropout']).strip("0").strip(".") + \
+                            '_lr-' + str(parameters['learning_rate']).strip("0").strip(".")
 parameters['model_dir'] = parameters['all_models_dir'] + parameters['model_name'] + '/'
 parameters['model_path'] = parameters['model_dir'] + parameters['model_name'] + '.pth'
 parameters['checkpoints_dir'] = parameters['model_dir'] + 'checkpoints/'
 parameters['checkpoints_path'] = parameters['checkpoints_dir'] + parameters['model_name']
 
+parameters['param_name'] = 'encoder.word_embedding'
 parameters['word_embs_path'] = parameters['model_dir'] + 'tree_input_word_embs.npy'
+
+parameters['max_seq_len'] = 200
+
+parameters['vocabulary_indices'] = parameters['model_dir'] + 'vocabulary-' + str(parameters['vocab_cutoff']) + '_wordixs_' + dataset_name + '.csv'

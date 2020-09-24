@@ -19,6 +19,7 @@
 ###
 
 import os
+import shutil
 import random
 import json
 import csv
@@ -61,6 +62,11 @@ if __name__ == '__main__':
     parameters['model_dir'] = dir_validation(parameters['model_dir'])
     parameters['checkpoints_dir'] = dir_validation(parameters['checkpoints_dir'])
 
+    
+    CONFIG_FILE_PATH = 'config_files/config_subset_data.py'
+    shutil.copy(CONFIG_FILE_PATH, parameters['model_dir'])
+    print(f'Copied config file {CONFIG_FILE_PATH} to {parameters["model_dir"]}')
+
     start_time = time.time()
     
     # SEND TO GPU IF AVAILABLE
@@ -70,8 +76,13 @@ if __name__ == '__main__':
         torch.set_default_tensor_type(torch.cuda.FloatTensor)
 
     # CONSTRUCT VOCABULARY
-    vocabulary = build_vocabulary(parameters['counts_file'], min_freq=parameters['vocab_cutoff'])
+    vocabulary = build_vocabulary(parameters['counts_file'], parameters['vocabulary_indices'], min_freq=parameters['vocab_cutoff'])
     print(f'Vocabulary contains {len(vocabulary)} distinct tokens, constructed with a frequency cutoff of {parameters["vocab_cutoff"]} and counts file at {parameters["counts_file"]}')
+    
+    # with open(parameters['vocabulary_indices'], 'w+', encoding='utf-8') as v:
+    #     vocabulary_indices = [[i, w] for i,w in enumerate(vocabulary.itos)]
+    #     print(f'Writing vocabulary indices to {parameters["vocabulary_indices"]}')
+    #     csv.writer(v).writerows(vocabulary_indices)
     
     # parameters['input_dim'] = len(vocabulary)
     input_dim = len(vocabulary)
@@ -105,7 +116,7 @@ if __name__ == '__main__':
             print('\t -> NO grad')
 
     loss_function = torch.nn.BCEWithLogitsLoss()
-    optimizer = torch.optim.Adam(model.parameters())
+    optimizer = torch.optim.Adam(model.parameters(), lr=parameters['learning_rate'])
     criterion = torch.nn.CrossEntropyLoss(ignore_index = vocabulary.stoi['<sos>'])
     
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -138,16 +149,18 @@ if __name__ == '__main__':
         repeat=parameters['repeat_train_val_iter']
     )
     
+    losses = []
+    val_losses = []
+
     for epoch in range(parameters['num_epochs']):
         print(f'\n\n &&&&&&&&&&&&& \n ############# \n \t\t\t EPOCH ======> {epoch} \n &&&&&&&&&&&&& \n ############# \n\n')
-
-        print_epoch = not epoch % math.ceil(parameters['num_epochs'] / 10)
         
         epoch_start_time = time.time()
 
         print(f'\n Epoch {epoch} training... \n')
-        epoch_loss = run_model(train_iter, model, optimizer, criterion, vocabulary, device=DEVICE, phase='train', print_epoch=print_epoch)
-        
+        epoch_loss = run_model(train_iter, model, optimizer, criterion, vocabulary, device=DEVICE, phase='train', max_seq_len=parameters['max_seq_len'])
+        losses.append(epoch_loss)
+
         mem_check(DEVICE, legend='Post-epoch, pre saving checkpoint') # MEMORY DEBUGGING!!!
         get_gpu_status() # MEMORY DEBUGGING!!!
 
@@ -164,23 +177,26 @@ if __name__ == '__main__':
         mem_check(DEVICE, legend='Post-epoch, post saving checkpoint') # MEMORY DEBUGGING!!!
         
         print(f'\n Epoch {epoch} validation... \n')
-        val_epoch_loss = run_model(val_iter, model, optimizer, criterion, vocabulary, device=DEVICE, phase='val', print_epoch=print_epoch)
-        
+        val_epoch_loss = run_model(val_iter, model, optimizer, criterion, vocabulary, device=DEVICE, phase='val', max_seq_len=parameters['max_seq_len'])
+        val_losses.append(val_epoch_loss)
+
         mem_check(DEVICE, legend='Post validation') # MEMORY DEBUGGING!!!
 
-        if print_epoch:
-            elapsed_time = time.time() - epoch_start_time
-            print(f'Elapsed time in epoch {epoch}: {elapsed_time}' )
-            print(f'Iteration {epoch} \t Loss: {epoch_loss} \t Validation loss: {val_epoch_loss}', flush=True)
+        elapsed_time = time.time() - epoch_start_time
+        print(f'Elapsed time in epoch {epoch}: {elapsed_time}' )
+        print(f'Iteration {epoch} \t Loss: {epoch_loss} \t Validation loss: {val_epoch_loss}', flush=True)
     
+
+    print(f'\n\n {"#" * 30} \t LOSSES: {losses}')
+    print(f'\n\n {"#" * 30} \t VAL LOSSES: {val_losses}')
+
     print('\n\nSaving model to ', parameters['model_path'] )
     # A common PyTorch convention is to save models using
     # either a .pt or .pth file extension.
     torch.save(model.state_dict(), parameters['model_path'] )
     #model.load_state_dict(torch.load(parameters['model_path'] ))
-
-    param_name = 'encoder.word_embedding'
-    save_param_to_npy(model, param_name, parameters['word_embs_path'])
+    
+    save_param_to_npy(model, parameters['param_name'], parameters['word_embs_path'])
     
     elapsed_time = time.time() - start_time
     print(f'{"=" * 20} \n\t Total elapsed time: {elapsed_time} \n {"=" * 20} \n')
