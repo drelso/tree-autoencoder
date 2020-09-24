@@ -273,7 +273,7 @@ def mem_check(device, legend=0):
 
 
 
-def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.device('cpu'), phase='train', max_seq_len=200, print_epoch=True):
+def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.device('cpu'), phase='train', max_seq_len=200, teacher_forcing_ratio=0.5, print_epoch=True):
     '''
     Run training or validation processes given a 
     model and a data iterator.
@@ -402,7 +402,7 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
                 mem_check(device, legend=str(i) + ' samples') # MEM DEBUGGING
             
             # num_correct_preds IS ONLY CALCULATED IN VALIDATION PHASE, IN TRAINING IT WILL ALWAYS EQUAL 0
-            output, enc_hidden, dec_hidden, num_correct_preds = model(batch_input, batch_target_tensor, print_preds=print_preds)
+            output, enc_hidden, dec_hidden, num_correct_preds = model(batch_input, batch_target_tensor, teacher_forcing_ratio=teacher_forcing_ratio, phase=phase, print_preds=print_preds)
             
             total_num_words += batch_seq_len
             total_correct_preds += num_correct_preds

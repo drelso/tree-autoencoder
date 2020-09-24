@@ -11,6 +11,8 @@ import os
 from pathlib import Path
 
 home = str(Path.home())
+# root_dir = home + '/Scratch/tree-autoencoder/' ## TODO: CHANGE FOR MYRIAD FILE STRUCTURE
+root_dir = home + '/tree-autoencoder/' ## TODO: CHANGE FOR DIS FILE STRUCTURE
 
 parameters = {}
 
@@ -31,7 +33,7 @@ parameters['bnc_subset_data'] = parameters['bnc_data_dir'] + subset_data_name + 
 parameters['bnc_subset_tags'] = parameters['bnc_data_dir'] + subset_data_name + '_tags.txt'
 
 bnc_data_name = subset_data_name if parameters['use_data_subset'] else full_data_name
-dataset_dir = 'data/'
+dataset_dir = root_dir + 'data/'
 dataset_name = bnc_data_name + '_seqlist_deptree'
 parameters['dataset_path'] = dataset_dir + dataset_name + '.json'
 
@@ -60,7 +62,7 @@ parameters['num_layers'] = 1
 parameters['dec_dropout'] = 0 # 0.5 NON-ZERO ONLY WORKS IF NUM_LAYERS > 1
 parameters['num_epochs'] = 10
 parameters['split_ratios'] = [.8, .1, .1]
-
+parameters['teacher_forcing_ratio'] = 0.5
 parameters['batch_size'] = 15
 
 # if True sorts samples based on the length of the sequence
@@ -72,14 +74,15 @@ parameters['sort_train_val_data'] = True
 parameters['shuffle_train_val_data'] = True
 parameters['repeat_train_val_iter'] = False
 
-parameters['all_models_dir'] = 'model/'
+parameters['all_models_dir'] = root_dir + 'model/'
 parameters['model_name'] = dataset_name + \
                             '_voc-' + str(parameters['vocab_cutoff']) + \
                             '_w-emb-' + str(parameters['word_emb_dim']) + \
                             '_btch-' + str(parameters['batch_size']) + \
                             '_epch-' + str(parameters['num_epochs']) + \
                             '_drpt-' + str(parameters['dec_dropout']).strip("0").strip(".") + \
-                            '_lr-' + str(parameters['learning_rate']).strip("0").strip(".")
+                            '_lr-' + str(parameters['learning_rate']).strip("0").strip(".") + \
+                            '_tforcing-' + str(parameters['teacher_forcing_ratio']).strip("0").strip(".")
 parameters['model_dir'] = parameters['all_models_dir'] + parameters['model_name'] + '/'
 parameters['model_path'] = parameters['model_dir'] + parameters['model_name'] + '.pth'
 parameters['checkpoints_dir'] = parameters['model_dir'] + 'checkpoints/'

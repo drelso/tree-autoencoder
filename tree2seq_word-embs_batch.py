@@ -20,6 +20,7 @@
 
 import os
 import shutil
+from pathlib import Path
 import random
 import json
 import csv
@@ -62,8 +63,9 @@ if __name__ == '__main__':
     parameters['model_dir'] = dir_validation(parameters['model_dir'])
     parameters['checkpoints_dir'] = dir_validation(parameters['checkpoints_dir'])
 
-    
-    CONFIG_FILE_PATH = 'config_files/config_subset_data.py'
+    home = str(Path.home())
+    # CONFIG_FILE_PATH = home + '/Scratch/tree-autoencoder/config_files/config_subset_data.py' # TODO: CHANGE FOR MYRIAD FILESYSTEM
+    CONFIG_FILE_PATH = 'config_files/config_subset_data.py' # TODO: CHANGE FOR DIS FILESYSTEM
     shutil.copy(CONFIG_FILE_PATH, parameters['model_dir'])
     print(f'Copied config file {CONFIG_FILE_PATH} to {parameters["model_dir"]}')
 
@@ -177,7 +179,7 @@ if __name__ == '__main__':
         mem_check(DEVICE, legend='Post-epoch, post saving checkpoint') # MEMORY DEBUGGING!!!
         
         print(f'\n Epoch {epoch} validation... \n')
-        val_epoch_loss = run_model(val_iter, model, optimizer, criterion, vocabulary, device=DEVICE, phase='val', max_seq_len=parameters['max_seq_len'])
+        val_epoch_loss = run_model(val_iter, model, optimizer, criterion, vocabulary, device=DEVICE, phase='val', max_seq_len=parameters['max_seq_len'], teacher_forcing_ratio=parameters['teacher_forcing_ratio'] )
         val_losses.append(val_epoch_loss)
 
         mem_check(DEVICE, legend='Post validation') # MEMORY DEBUGGING!!!
