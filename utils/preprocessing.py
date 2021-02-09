@@ -32,7 +32,7 @@ def dummy_context_mgr():
     
 
 
-def raw_text_from_elem_tree(filename, use_headwords=False, include_heads=True, replace_nums=False, replace_unclass=False):
+def raw_text_from_elem_tree(filename, use_headwords=False, replace_nums=False, replace_unclass=False):
     """
     This function only processes the words in
     a sentence, skips punctuation, and can
@@ -40,8 +40,6 @@ def raw_text_from_elem_tree(filename, use_headwords=False, include_heads=True, r
     Headwords are the (lowercase) root form of
     the word, e.g. the word "Said" has headword
     "say".
-    There is also the option to skip the headings
-    and process only the body of the text
     
     Requirements
     ------------
@@ -54,10 +52,6 @@ def raw_text_from_elem_tree(filename, use_headwords=False, include_heads=True, r
     use_headwords : bool, optional
         whether to use headwords or the raw
         version of the words (default: False)
-    include_heads : bool, optional
-        whether to include the headings (e.g.
-        titles) or only process the body of the
-        text (default: True)
     replace_nums : bool, optional
         whether to replace numbers with a default
         tag <NUM> (default: False)
@@ -72,83 +66,194 @@ def raw_text_from_elem_tree(filename, use_headwords=False, include_heads=True, r
     """
     
     root = ET.parse(filename).getroot()
-    
     text = ''
     tags = ''
-    
-    for text_root in root:
-        if text_root.tag == 'wtext' or text_root.tag == 'stext':
-            for div in text_root.findall('div'):
-                sub_div = div.findall('div')
-                # If no subdiv is present create list with
-                # single div
-                if not sub_div:
-                    divs = [div]
-                # Else, divs becomes a list of all subdivs
-                else:
-                    divs = sub_div
+
+    for sent in root.iter(tag='s'):
+        # Gets all text, ignores all the rest
+        # print([w for w in sent.itertext()])
+        
+        tokens = []
+        sent_text = ''
+        sent_tags = ''
+
+        for token in sent:
+            if token.tag == 'mw':
+                for w in token:
+                    tokens.append(w)
+            else:
+                tokens.append(token)
+        
+        word = ''
+        tag = ''
+
+        for token in tokens:
+            # Skip empty words
+            if token.text is None: continue 
+            word = token.text.strip()
+            
+            if token.tag == 'w':
+                tag = token.attrib['pos']
+                # Replace word with head word (lemma)
+                if use_headwords:
+                    word = token.attrib['hw']
+
+                # Replace numbers with <NUM>
+                if replace_nums and token.attrib['c5'] == 'CRD':
+                    word = '<NUM>'
                 
-                for sdiv in divs:
-                    for content in sdiv:
-                        if content.tag != 'head' or include_heads:
-                            # Auxiliary variable to store
-                            # sentences and sentences nested
-                            # in quotes together
-                            sents_and_quotes = []
-                            for item in content:
-                                if item.tag == 's':
-                                    sents_and_quotes.append(item)
-                                else:
-                                    for par in item.findall('p'):
-                                        for sent in par:
-                                            sents_and_quotes.append(sent)
-                            
-                            for sent in sents_and_quotes:
-                                sent_text = ''
-                                sent_tags = ''
-                                
-                                # Process multiwords as
-                                # single words
-                                words = []
-                                for item in sent:
-                                    if item.tag == 'w':
-                                        words.append(item)
-                                    elif item.tag == 'mw':
-                                        for word in item.findall('w'):
-                                            words.append(word)
-                                
-                                for word in words:
-                                    if use_headwords:
-                                        word_text = word.attrib['hw'] + ' '
-                                        word_tags = word.attrib['pos'] + ' '
-                                    else:
-                                        if word.text is not None:
-                                            word_text = word.text.lower()
-                                            word_tags = word.attrib['pos']
-                                        else:
-                                            word_text = ' '
-                                            word_tags = ' '
-                                        if not word_text.endswith(' '):
-                                            word_text += ' '
-                                        if not word_tags.endswith(' '):
-                                            word_tags += ' '
-                                    # Replace numbers with a default
-                                    # tag
-                                    if replace_nums and word.attrib['c5'] == 'CRD':
-                                        word_text = '<NUM> '
-                                        word_tags = word.attrib['pos'] + ' '
-                                    # Replace "unclassified" words
-                                    # with a default tag
-                                    if replace_unclass and word.attrib['c5'] == 'UNC':
-                                        word_text = '<UNC> '
-                                        word_tags = word.attrib['pos'] + ' '
-                                    sent_text += word_text
-                                    sent_tags += word_tags
-                                if sent_text != '':
-                                    text += sent_text + '\n'
-                                if sent_tags != '':
-                                    tags += sent_tags + '\n'
+                # Replace "unclassified" words with <UNC>
+                if replace_unclass and token.attrib['c5'] == 'UNC':
+                    word = '<UNC>'
+            elif token.tag == 'c':
+                # For punctuation use C5 tag
+                tag = token.attrib['c5']
+            
+            if word and tag:
+                sent_text += word + ' '
+                sent_tags += tag + ' '
+        
+        if sent_text and sent_tags:
+            text += sent_text + '\n'
+            tags += sent_tags + '\n'
+
+    # @DEBUG:
+    # with open(filename, 'r') as f:
+    #     xml_lines = f.readlines()
+    #     print(f'Lines in XML:{len(xml_lines)}')
+
+    text_lines = text.count("\n")+1
+    tag_lines = tags.count("\n")+1
+    if text_lines != tag_lines:
+        print(f'Lines in text:{text_lines} \t and tags: {tag_lines}')
+    
     return text, tags
+
+
+# PREVIOUS IMPLEMENTATION
+# def raw_text_from_elem_tree(filename, use_headwords=False, include_heads=True, replace_nums=False, replace_unclass=False):
+#     """
+#     This function only processes the words in
+#     a sentence, skips punctuation, and can
+#     optionally use headwords instead of raw text.
+#     Headwords are the (lowercase) root form of
+#     the word, e.g. the word "Said" has headword
+#     "say".
+#     There is also the option to skip the headings
+#     and process only the body of the text
+    
+#     Requirements
+#     ------------
+#     import xml.etree.ElementTree as ET
+    
+#     Parameters
+#     ----------
+#     filename : str
+#         path to XML file to parse
+#     use_headwords : bool, optional
+#         whether to use headwords or the raw
+#         version of the words (default: False)
+#     include_heads : bool, optional
+#         whether to include the headings (e.g.
+#         titles) or only process the body of the
+#         text (default: True)
+#     replace_nums : bool, optional
+#         whether to replace numbers with a default
+#         tag <NUM> (default: False)
+#     replace_unclass : bool, optional
+#         whether to replace "unclassified" (i.e.) with a
+#         default tag <UNC> (default: False)
+    
+#     Returns
+#     -------
+#     str
+#         full processed text
+#     """
+    
+#     root = ET.parse(filename).getroot()
+    
+#     text = ''
+#     tags = ''
+    
+#     # @DEBUG:
+#     with open(filename, 'r') as f:
+#         print(f'Lines in XML:{len(f.readlines())}')
+    
+#     for text_root in root:
+#         if text_root.tag == 'wtext' or text_root.tag == 'stext':
+#             for div in text_root.findall('div'):
+#                 sub_div = div.findall('div')
+#                 # If no subdiv is present create list with
+#                 # single div
+#                 if not sub_div:
+#                     divs = [div]
+#                 # Else, divs becomes a list of all subdivs
+#                 else:
+#                     divs = sub_div
+                
+#                 for sdiv in divs:
+#                     for content in sdiv:
+#                         if content.tag != 'head' or include_heads:
+#                             # Auxiliary variable to store
+#                             # sentences and sentences nested
+#                             # in quotes together
+#                             sents_and_quotes = []
+#                             for item in content:
+#                                 if item.tag == 's':
+#                                     sents_and_quotes.append(item)
+#                                 else:
+#                                     for par in item.findall('p'):
+#                                         for sent in par:
+#                                             sents_and_quotes.append(sent)
+                            
+#                             for sent in sents_and_quotes:
+#                                 sent_text = ''
+#                                 sent_tags = ''
+                                
+#                                 # Process multiwords as
+#                                 # single words
+#                                 words = []
+#                                 for item in sent:
+#                                     if item.tag == 'w':
+#                                         words.append(item)
+#                                     elif item.tag == 'mw':
+#                                         for word in item.findall('w'):
+#                                             words.append(word)
+                                
+#                                 for word in words:
+#                                     if use_headwords:
+#                                         word_text = word.attrib['hw'] + ' '
+#                                         word_tags = word.attrib['pos'] + ' '
+#                                     else:
+#                                         if word.text is not None:
+#                                             word_text = word.text.lower()
+#                                             word_tags = word.attrib['pos']
+#                                         else:
+#                                             word_text = ' '
+#                                             word_tags = ' '
+#                                         if not word_text.endswith(' '):
+#                                             word_text += ' '
+#                                         if not word_tags.endswith(' '):
+#                                             word_tags += ' '
+#                                     # Replace numbers with a default
+#                                     # tag
+#                                     if replace_nums and word.attrib['c5'] == 'CRD':
+#                                         word_text = '<NUM> '
+#                                         word_tags = word.attrib['pos'] + ' '
+#                                     # Replace "unclassified" words
+#                                     # with a default tag
+#                                     if replace_unclass and word.attrib['c5'] == 'UNC':
+#                                         word_text = '<UNC> '
+#                                         word_tags = word.attrib['pos'] + ' '
+#                                     sent_text += word_text
+#                                     sent_tags += word_tags
+#                                 if sent_text != '':
+#                                     text += sent_text + '\n'
+#                                 if sent_tags != '':
+#                                     tags += sent_tags + '\n'
+#     line_count = text.count("\n")+1
+#     print(f'Lines in Text:{line_count}')
+#     return text, tags
 
 
 def construct_dataset(bnc_xml_filename, dataset_savefile, tags_savefile=None, use_headwords=False, include_heads=False, replace_nums=False, replace_unclass=False):
@@ -190,7 +295,7 @@ def construct_dataset(bnc_xml_filename, dataset_savefile, tags_savefile=None, us
     with open(dataset_savefile, 'a+', encoding='utf-8') as savefile, \
         open_tags_file as tags_file:
         print('Reading data from', bnc_xml_filename)
-        text, tags = raw_text_from_elem_tree(bnc_xml_filename, use_headwords=use_headwords, include_heads=include_heads, replace_nums=replace_nums, replace_unclass=replace_unclass)
+        text, tags = raw_text_from_elem_tree(bnc_xml_filename, use_headwords=use_headwords, replace_nums=replace_nums, replace_unclass=replace_unclass)
         print('Writing text data to', dataset_savefile)
         savefile.write(text)
         if tags_savefile:
@@ -199,7 +304,7 @@ def construct_dataset(bnc_xml_filename, dataset_savefile, tags_savefile=None, us
         print('Done writing')
 
 
-def process_all_datafiles(data_dir, dataset_savefile, tags_savefile=None, use_headwords=False, include_heads=False, replace_nums=False, replace_unclass=False):
+def process_all_datafiles(data_dir, dataset_savefile, tags_savefile=None, use_headwords=False, replace_nums=False, replace_unclass=False):
     """
     Given a data directory (for BNC XML files)
     go through all files in the directory, process
@@ -217,10 +322,6 @@ def process_all_datafiles(data_dir, dataset_savefile, tags_savefile=None, use_he
     use_headwords : bool, optional
         whether to use headwords or the raw
         version of the words (default: False)
-    include_heads : bool, optional
-        whether to include the headings (e.g.
-        titles) or only process the body of the
-        text (default: True)
     replace_nums : bool, optional
         whether to replace numbers with a default
         tag <NUM> (default: False)
@@ -238,13 +339,13 @@ def process_all_datafiles(data_dir, dataset_savefile, tags_savefile=None, use_he
                 dir_path = full_path + '/' + item
                 if item.endswith('.xml'):
                     print('Processing file', dir_path)
-                    construct_dataset(dir_path, dataset_savefile, tags_savefile=tags_savefile, use_headwords=use_headwords, include_heads=include_heads, replace_nums=replace_nums, replace_unclass=replace_unclass)
+                    construct_dataset(dir_path, dataset_savefile, tags_savefile=tags_savefile, use_headwords=use_headwords, replace_nums=replace_nums, replace_unclass=replace_unclass)
                 elif os.path.isdir(dir_path):
                     files = os.listdir(dir_path)
                     for file in files:
                         filepath = dir_path + '/' + file
                         print('Processing file', filepath)
-                        construct_dataset(filepath, dataset_savefile, tags_savefile=tags_savefile, use_headwords=use_headwords, include_heads=include_heads, replace_nums=replace_nums, replace_unclass=replace_unclass)
+                        construct_dataset(filepath, dataset_savefile, tags_savefile=tags_savefile, use_headwords=use_headwords, replace_nums=replace_nums, replace_unclass=replace_unclass)
 
 
 def get_stop_words():
@@ -261,6 +362,25 @@ def get_stop_words():
     stop_words = ['i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', "you're", "you've", "you'll", "you'd", 'your', 'yours', 'yourself', 'yourselves', 'he', 'him', 'his', 'himself', 'she', "she's", 'her', 'hers', 'herself', 'it', "it's", 'its', 'itself', 'they', 'them', 'their', 'theirs', 'themselves', 'what', 'which', 'who', 'whom', 'this', 'that', "that'll", 'these', 'those', 'am', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'having', 'do', 'does', 'did', 'doing', 'a', 'an', 'the', 'and', 'but', 'if', 'or', 'because', 'as', 'until', 'while', 'of', 'at', 'by', 'for', 'with', 'about', 'against', 'between', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'to', 'from', 'up', 'down', 'in', 'out', 'on', 'off', 'over', 'under', 'again', 'further', 'then', 'once', 'here', 'there', 'when', 'where', 'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 's', 't', 'can', 'will', 'just', 'don', "don't", 'should', "should've", 'now', 'd', 'll', 'm', 'o', 're', 've', 'y', 'ain', 'aren', "aren't", 'couldn', "couldn't", 'didn', "didn't", 'doesn', "doesn't", 'hadn', "hadn't", 'hasn', "hasn't", 'haven', "haven't", 'isn', "isn't", 'ma', 'mightn', "mightn't", 'mustn', "mustn't", 'needn', "needn't", 'shan', "shan't", 'shouldn', "shouldn't", 'wasn', "wasn't", 'weren', "weren't", 'won', "won't", 'wouldn', "wouldn't"]
     
     return stop_words
+
+
+def format_num(number):
+    """
+    Change number string to a placeholder
+    format. For example:
+        12.43 => ##.##
+
+    Requirements
+    ------------
+    import re
+
+    Parameters
+    ----------
+    number : str
+        number to format
+    """
+
+    return re.sub(r"[0-9]", '#', number)
 
 
 def shuffle_and_subset_dataset(data_path, tags_path, subset_data_path, subset_tags_path, data_size=0.5):
@@ -431,7 +551,45 @@ def basic_tokenise(datafile, preserve_sents=True):
         print('Last words', words)
     
     return tokenised_data
+
+
+def dataset_to_wordlist(datafile, preserve_sents=True):
+    """
+    Convert seqlist-deptree dataset to
+    list of words to construct word counts
     
+    Parameters
+    ----------
+    datafile : str
+        path to text file to tokenise
+    preserve_sents : bool, optional
+        whether to use preserve the sentence
+        separation by constructing a list of
+        lists, if false returns a single list
+        with all words in the text
+        (default: True)
+    
+    Returns
+    -------
+    [str] OR [[str]]
+        list, or list of lists, of tokenised text
+    """
+    tokenised_data = []
+    with open(datafile, 'r', encoding='utf-8') as d:
+        num_words = 0
+        for line_num, line in enumerate(d.readlines()):
+            datapoint = json.loads(line)
+            seq = datapoint['seq']
+            if preserve_sents:
+                tokenised_data.append(seq)
+            else:
+                tokenised_data.extend(seq)
+            num_words += len(seq)
+        
+        print('Num words ', num_words)
+        print('Num lines ', line_num)
+    return tokenised_data
+
 
 def word_counts(tokenised_data, save_file):
     """
@@ -591,7 +749,7 @@ def word_ID(word, vocab_file):
     return -1
     
 
-def seqlist_deptree_data(datafile, dataset_savefile):
+def seqlist_deptree_data(datafile, dataset_savefile, to_lower=True, replace_num=True, remove_punct=False):
     """
     Convert a raw text file into a dependency tree and a sequence
     list dictionary and save it to file
@@ -608,6 +766,15 @@ def seqlist_deptree_data(datafile, dataset_savefile):
         path to the raw text data file
     dataset_savefile : str
         path to save the new dataset file to
+    to_lower : bool
+        whether to convert tokens to lowercase
+        (default: True)
+    replace_num : bool
+        whether to replace numbers with number
+        format, e.g. 12.5 => ##.# (default: True)
+    remove_punct : bool
+        whether to remove punctuation tokens
+        (default: False)
     """
     with open(datafile, 'r', encoding='utf-8') as d:
         print(f'Reading data in {datafile}')
@@ -620,22 +787,15 @@ def seqlist_deptree_data(datafile, dataset_savefile):
 
     with open(dataset_savefile, 'w+', encoding='utf-8') as s:
         for i, sent in enumerate(data):
-            tree, seq = text_to_json_tree(sent, nlp)
+            tree, seq = text_to_json_tree(sent, nlp, to_lower=to_lower, replace_num=replace_num, remove_punct=remove_punct)
             sample = {'seq': seq, 'tree': tree}
             s.write(json.dumps(sample) + '\n')
 
             if i % (len(data)/10) == 0:
                 print(f'{i} sentences processed')
-            # if i > 10: break
-    # print(f'Dataset {dataset}')
-
-        # json.dump(dataset, s)
-        # s.write('\n'.join(json.dumps(dataset)))
-        # for sample in dataset:
-        #     s.write(json.dumps(sample) + '\n')
 
 
-def text_to_json_tree(text, nlp):
+def text_to_json_tree(text, nlp, to_lower=True, replace_num=True, remove_punct=False):
     """
     Process text input with spacy and convert
     into a dependency tree in JSON format and
@@ -652,7 +812,16 @@ def text_to_json_tree(text, nlp):
         raw text to process
     nlp : spacy model
         spaCy model to process the raw text with
-    
+    to_lower : bool
+        whether to convert tokens to lowercase
+        (default: True)
+    replace_num : bool
+        whether to replace numbers with number
+        format, e.g. 12.5 => ##.# (default: True)
+    remove_punct : bool
+        whether to remove punctuation tokens
+        (default: False)
+
     Returns
     -------
     JSON tree
@@ -664,21 +833,30 @@ def text_to_json_tree(text, nlp):
     seq = []
 
     for token in doc:
-        # print(token, token.dep, token.dep_, [child for child in token.children])
+        # print(token, token.dep_, [child for child in token.children])
         # print(token, token.idx, token.head, [[child, child.idx] for child in token.children])
         
-        seq.append(token.text)
-
         if token.dep_ == 'ROOT':
             root = token
             # break
+        
+        # Skip punctuation token
+        if remove_punct and token.pos_ == 'PUNCT':
+            continue
+
+        token_text = token.lower_ if to_lower else token.text
+        
+        if replace_num and token.pos_ == 'NUM':
+            token_text = format_num(token_text)
+        
+        seq.append(token_text) 
     
-    tree = _build_json_tree(root)
+    tree = _build_json_tree(root, to_lower=to_lower, replace_num=replace_num, remove_punct=remove_punct)
 
     return tree, seq # root
 
 
-def _build_json_tree(token):
+def _build_json_tree(token, to_lower=True, replace_num=True, remove_punct=False):
     """
     Recursively construct the JSON tree
     starting from the root and appending
@@ -687,6 +865,16 @@ def _build_json_tree(token):
     Parameters
     ----------
     token : spacy token
+        token (pointer) to process
+    to_lower : bool
+        whether to convert tokens to lowercase
+        (default: True)
+    replace_num : bool
+        whether to replace numbers with number
+        format, e.g. 12.5 => ##.# (default: True)
+    remove_punct : bool
+        whether to remove punctuation tokens
+        (default: False)
 
     Returns
     -------
@@ -694,12 +882,18 @@ def _build_json_tree(token):
         dictionary containing dependency parse tree
     """
     node = {}
-    node['word'] = token.text
+    token_text = token.lower_ if to_lower else token.text
+    if replace_num and token.pos_ == 'NUM':
+            token_text = format_num(token_text)
+
+    node['word'] = token_text
     node['label'] = token.pos_
     node['children'] = []
 
     for child in token.children:
-        node['children'].append(_build_json_tree(child))
+        if remove_punct and child.pos_ == 'PUNCT':
+            continue
+        node['children'].append(_build_json_tree(child, to_lower=to_lower, replace_num=replace_num, remove_punct=remove_punct))
     
     return node
 

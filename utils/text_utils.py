@@ -53,7 +53,18 @@ def build_vocabulary(counts_file, min_freq=1):
     return vocabulary
 
 
-
+def ixs_to_words(ixs_list, vocabulary):
+    """
+    Translates a list of indices into words
+    
+    Parameters
+    ----------
+    ixs_list : [i]
+        list of indices to translate
+    vocabulary : torchtext.vocab
+        vocabulary object to use to translate
+    """
+    return [vocabulary.itos[i] for i in ixs_list]
 
 
 

@@ -53,8 +53,10 @@ from architectures.tree2seq import Tree2Seq
 
 from utils.funcs import print_parameters, dir_validation, memory_stats
 
-# from config_files.config_batch import parameters
-from config_files.config_subset_data import parameters
+from utils.text_utils import ixs_to_words
+
+# @DEBUG:
+from config_temp import parameters
 
 
 
@@ -64,8 +66,8 @@ if __name__ == '__main__':
     parameters['checkpoints_dir'] = dir_validation(parameters['checkpoints_dir'])
 
     home = str(Path.home())
-    # CONFIG_FILE_PATH = home + '/Scratch/tree-autoencoder/config_files/config_subset_data.py' # TODO: CHANGE FOR MYRIAD FILESYSTEM
-    CONFIG_FILE_PATH = 'config_files/config_subset_data.py' # TODO: CHANGE FOR DIS FILESYSTEM
+    # CONFIG_FILE_PATH = home + '/Scratch/tree-autoencoder/config.py' # TODO: CHANGE FOR MYRIAD FILESYSTEM
+    CONFIG_FILE_PATH = 'config_temp.py' # TODO: CHANGE FOR DIS FILESYSTEM
     shutil.copy(CONFIG_FILE_PATH, parameters['model_dir'])
     print(f'Copied config file {CONFIG_FILE_PATH} to {parameters["model_dir"]}')
 
@@ -77,24 +79,18 @@ if __name__ == '__main__':
     if torch.cuda.is_available():
         torch.set_default_tensor_type(torch.cuda.FloatTensor)
 
+    # PRINT PARAMETERS
+    print_parameters(parameters)
+
+    ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    ## VOCABULARY CONSTRUCTION AND DATASET NUMERICALISATION
+    ##
     # CONSTRUCT VOCABULARY
     vocabulary = build_vocabulary(parameters['counts_file'], parameters['vocabulary_indices'], min_freq=parameters['vocab_cutoff'])
     print(f'Vocabulary contains {len(vocabulary)} distinct tokens, constructed with a frequency cutoff of {parameters["vocab_cutoff"]} and counts file at {parameters["counts_file"]}')
     
-    # with open(parameters['vocabulary_indices'], 'w+', encoding='utf-8') as v:
-    #     vocabulary_indices = [[i, w] for i,w in enumerate(vocabulary.itos)]
-    #     print(f'Writing vocabulary indices to {parameters["vocabulary_indices"]}')
-    #     csv.writer(v).writerows(vocabulary_indices)
-    
-    # parameters['input_dim'] = len(vocabulary)
     input_dim = len(vocabulary)
 
-    # PRINT PARAMETERS
-    print_parameters(parameters)
-    
-    ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    ## VOCABULARY CONSTRUCTION AND DATASET NUMERICALISATION
-    ##
     ## ONLY NUMERICALISE THE DATA RIGHT IF NO EXISTING FILE IS FOUND
     if not os.path.exists(parameters['num_dataset']):
         print(f'No numericalised file found at {parameters["num_dataset"]}, creating numericalised file from dataset at {parameters["dataset_path"]}')
@@ -116,10 +112,25 @@ if __name__ == '__main__':
             print('\t -> requires grad')
         else:
             print('\t -> NO grad')
+    
+    ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    ## WEIGHTING WORD PREDICTIONS AS FUNCTION OF THEIR FREQS
+    ##
+    ## NOTE: ADDED ONE TO VOCAB_COUNTS TO PREVENT TOKENS THAT OCCUR
+    ##       DON'T OCCUR IN THE DATASET (SUCH AS <UNK>) FROM SHIFTING
+    ##       THE WEIGHTS TO ZERO OR INFINITY (IN THE CASE OF 1/FREQ)
+    VOCAB_COUNTS = torch.tensor([vocabulary.freqs[w] + 1 for w in vocabulary.itos], dtype=torch.float)
+    VOCAB_FREQS = VOCAB_COUNTS / VOCAB_COUNTS.sum()
+    print(f'Sample vocabulary frequencies: {VOCAB_FREQS[:10]} \t (VOCAB_FREQS.type(): {VOCAB_FREQS.type()})') #
+    WORD_CE_LOSS_WEIGHTS = torch.ones(len(vocabulary), dtype=torch.float)
+    # WORD_CE_LOSS_WEIGHTS /= VOCAB_FREQS
 
-    loss_function = torch.nn.BCEWithLogitsLoss()
+    print(f'Minimum weight: {WORD_CE_LOSS_WEIGHTS.min()} \t\t Maximum weight: {WORD_CE_LOSS_WEIGHTS.max()}')
+
+    print(f'\n\n{"~" * 35} \t Cross Entropy Loss weighting scheme: \t\t\t IDENTITY \n\n')
+
     optimizer = torch.optim.Adam(model.parameters(), lr=parameters['learning_rate'])
-    criterion = torch.nn.CrossEntropyLoss(ignore_index = vocabulary.stoi['<sos>'])
+    criterion = torch.nn.CrossEntropyLoss(weight=WORD_CE_LOSS_WEIGHTS, ignore_index = vocabulary.stoi['<sos>'])
     
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ## LOAD AND SPLIT DATASET
@@ -150,9 +161,33 @@ if __name__ == '__main__':
         device=DEVICE,
         repeat=parameters['repeat_train_val_iter']
     )
+
+    print(dir(test_iter))
+    # print("test_iter.data", test_iter.data())
+    print("test_iter.data", dir(test_iter.data))
+    print("test_iter.dataset", dir(test_iter.dataset))
+
+    for i, sample in enumerate(test_iter.data()):
+        print('seq:', ixs_to_words(sample.seq, vocabulary))
+        if i > 10: break
+
+    data_batches = torchtext.data.batch(test_iter.data(), test_iter.batch_size, test_iter.batch_size_fn)
+
+    print('\n\nBATCH PROCESSING: \n\n')
+
+    for i, batch in enumerate(data_batches):
+        print('Batch number: ', i)
+        print('seq:', ixs_to_words(batch[0].seq, vocabulary))
+        print('seq:', ixs_to_words(batch[1].seq, vocabulary))
+        if i > 10: break
+
+    exit()
+
     
     losses = []
+    accuracies = []
     val_losses = []
+    val_accuracies = []
 
     for epoch in range(parameters['num_epochs']):
         print(f'\n\n &&&&&&&&&&&&& \n ############# \n \t\t\t EPOCH ======> {epoch} \n &&&&&&&&&&&&& \n ############# \n\n')
@@ -160,29 +195,32 @@ if __name__ == '__main__':
         epoch_start_time = time.time()
 
         print(f'\n Epoch {epoch} training... \n')
-        epoch_loss = run_model(train_iter, model, optimizer, criterion, vocabulary, device=DEVICE, phase='train', max_seq_len=parameters['max_seq_len'])
+        epoch_loss, epoch_accuracy = run_model(train_iter, model, optimizer, criterion, vocabulary, device=DEVICE, phase='train', max_seq_len=parameters['max_seq_len'])
         losses.append(epoch_loss)
+        accuracies.append(epoch_accuracy)
 
-        mem_check(DEVICE, legend='Post-epoch, pre saving checkpoint') # MEMORY DEBUGGING!!!
-        get_gpu_status() # MEMORY DEBUGGING!!!
+        # mem_check(DEVICE, legend='Post-epoch, pre saving checkpoint') # MEMORY DEBUGGING!!!
+        # get_gpu_status() # MEMORY DEBUGGING!!!
 
-        checkpoints_file = parameters['checkpoints_path'] + '_epoch' + str(epoch) + '-chkpt.tar'
-        print(f'Saving epoch checkpoint file: {checkpoints_file} \n', flush=True)
+        ## TODO: UNCOMMENT! DEBUGGING
+        # checkpoints_file = parameters['checkpoints_path'] + '_epoch' + str(epoch) + '-chkpt.tar'
+        # print(f'Saving epoch checkpoint file: {checkpoints_file} \n', flush=True)
         
-        torch.save({
-                'epoch': epoch,
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'loss': epoch_loss
-                }, checkpoints_file)
+        # torch.save({
+        #         'epoch': epoch,
+        #         'model_state_dict': model.state_dict(),
+        #         'optimizer_state_dict': optimizer.state_dict(),
+        #         'loss': epoch_loss
+        #         }, checkpoints_file)
         
-        mem_check(DEVICE, legend='Post-epoch, post saving checkpoint') # MEMORY DEBUGGING!!!
+        # mem_check(DEVICE, legend='Post-epoch, post saving checkpoint') # MEMORY DEBUGGING!!!
         
         print(f'\n Epoch {epoch} validation... \n')
-        val_epoch_loss = run_model(val_iter, model, optimizer, criterion, vocabulary, device=DEVICE, phase='val', max_seq_len=parameters['max_seq_len'], teacher_forcing_ratio=parameters['teacher_forcing_ratio'] )
+        val_epoch_loss, val_epoch_accuracy = run_model(val_iter, model, optimizer, criterion, vocabulary, device=DEVICE, phase='val', max_seq_len=parameters['max_seq_len'], teacher_forcing_ratio=parameters['teacher_forcing_ratio'] )
         val_losses.append(val_epoch_loss)
+        val_accuracies.append(val_epoch_accuracy)
 
-        mem_check(DEVICE, legend='Post validation') # MEMORY DEBUGGING!!!
+        # mem_check(DEVICE, legend='Post validation') # MEMORY DEBUGGING!!!
 
         elapsed_time = time.time() - epoch_start_time
         print(f'Elapsed time in epoch {epoch}: {elapsed_time}' )
@@ -190,7 +228,9 @@ if __name__ == '__main__':
     
 
     print(f'\n\n {"#" * 30} \t LOSSES: {losses}')
+    print(f'\n\n {"#" * 30} \t ACCURACIES: {accuracies}')
     print(f'\n\n {"#" * 30} \t VAL LOSSES: {val_losses}')
+    print(f'\n\n {"#" * 30} \t VAL ACCURACIES: {val_accuracies}')
 
     print('\n\nSaving model to ', parameters['model_path'] )
     # A common PyTorch convention is to save models using

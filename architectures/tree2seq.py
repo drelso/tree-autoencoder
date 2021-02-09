@@ -93,10 +93,10 @@ class Tree2Seq(nn.Module):
             #get the highest predicted token from our predictions
             top1 = output.argmax(1)
             
-            if phase == 'val':
-                pred_word = self.vocabulary.itos[top1[0].item()]
-                target_word = self.vocabulary.itos[trg[t][0].item()]
-                if pred_word == target_word: NUM_CORRECT_PREDS += 1
+            # if phase == 'val':
+            pred_word = self.vocabulary.itos[top1[0].item()]
+            target_word = self.vocabulary.itos[trg[t][0].item()]
+            if pred_word == target_word: NUM_CORRECT_PREDS += 1
 
 
             if print_preds:

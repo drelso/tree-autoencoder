@@ -344,6 +344,9 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
     total_num_words = 0
     total_correct_preds = 0
 
+    total_word_preds = torch.zeros(vocab_size)
+    total_top1_word_preds = torch.zeros(vocab_size)
+
     with grad_ctx_manager:
         for batch_num, batch in enumerate(data_batches):
             batch_input_list = []
@@ -353,6 +356,10 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
             batch_size = len(batch)
             if phase == 'train':
                 optimizer.zero_grad()
+            
+            if batch_num in [100, 500, 1000, 3000, 10000, 50000, 100000, 500000, 1000000]: # break ## TODO: REMOVE, DEBUGGING!
+                elapsed_time = time.time() - start_time
+                print(f'{"=" * 20} \n\t Batch number {batch_num} elapsed time: {elapsed_time} \n {"=" * 20} \n')
 
             while len(batch):
                 sample = batch.pop()
@@ -390,7 +397,7 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
 
             batch_target_tensor = torch.tensor(batch_target, device=device, dtype=torch.long).transpose(0, 1)
             
-            if print_epoch and batch_num == 0:
+            if print_epoch and (batch_num == 0 or batch_num == 198):
                 print_preds = True
             else:
                 print_preds = False
@@ -399,7 +406,7 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
             if print_epoch and checkpoint_sample and phase == 'train':
                 elapsed_time = time.time() - start_time
                 print(f'\nElapsed time after {i} samples ({batch_num} batches): {elapsed_time} \n\t Largest batch: {largest_batch_seq}', flush=True)
-                mem_check(device, legend=str(i) + ' samples') # MEM DEBUGGING
+                # mem_check(device, legend=str(i) + ' samples') # MEM DEBUGGING
             
             # num_correct_preds IS ONLY CALCULATED IN VALIDATION PHASE, IN TRAINING IT WILL ALWAYS EQUAL 0
             output, enc_hidden, dec_hidden, num_correct_preds = model(batch_input, batch_target_tensor, teacher_forcing_ratio=teacher_forcing_ratio, phase=phase, print_preds=print_preds)
@@ -428,6 +435,11 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
                 # 3. FLATTEN INTO A SINGLE DIMENSION (.view(-1) DOES NOT WORK
                 #    DUE TO THE TENSOR BEING NON-CONTIGUOUS)
                 batch_target_tensor = batch_target_tensor[1:].T.reshape(-1)
+            
+            # SUM ALL PREDICTIONS PER WORD
+            total_word_preds += output.sum(dim=0)
+            # INCREMENT INDICES OF WORDS THAT APPEAR AS TOP 1 PREDICTION
+            total_top1_word_preds.put_(output.argmax(dim=0), torch.ones(vocab_size), accumulate=True)
 
             loss = criterion(output, batch_target_tensor)
             
@@ -440,16 +452,33 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
                 # WHICH MAKES BPTT TRACK ONLY THE CURRENT BATCH
                 # INSTEAD OF THE FULL DATASET HISTORY
                 # (FROM https://discuss.pytorch.org/t/solved-why-we-need-to-detach-variable-which-contains-hidden-representation/1426/3)
-            enc_hidden = repackage_hidden(enc_hidden)
-            dec_hidden = repackage_hidden(dec_hidden)
+                enc_hidden = repackage_hidden(enc_hidden)
+                dec_hidden = repackage_hidden(dec_hidden)
             
             epoch_loss += loss.detach().item()
-        mem_check(device, legend='Finished processing batches') # MEM DEBUGGING
+        # mem_check(device, legend='Finished processing batches') # MEM DEBUGGING
         print(f'Skipped {len(batches_skipped_lengths)} batches with lengths: {batches_skipped_lengths}', flush=True)
 
-        if phase == 'val':
-            print(f'Validation accuracy: {total_correct_preds / total_num_words} \t ({total_correct_preds}/{total_num_words} correctly predicted)')
-    return epoch_loss / i
+        # ADD UP ALL INDIVIDUAL PREDICTIONS FOR WORDS AND PRINT
+        # THE TOP-K MOST PREDICTED WORDS, THIS HELPS KEEP TRACK
+        # OF PROBLEMS WITH PREDICTING ONLY THE MOST FREQUENT WORDS
+        num_top_words = 20
+        # ACCUMULATED SCORES
+        top_k_preds = torch.topk(total_word_preds, num_top_words)
+        top_k_ixs_vals = [row for row in zip([vocabulary.itos[i.item()] for i in top_k_preds.indices], [v.item() for v in top_k_preds.values])]
+        top_k_string = '\n'.join([i[0] + (' ' * (40 - len(i[0]))) + str(i[1]) for i in top_k_ixs_vals])
+        print(f'\n\n{"*&*" * 12} \n\t{num_top_words} highest-prediction words: \n{top_k_string} \n{"*&*" * 12} \n\n')
+        
+        # TOP-1 PREDICTIONS
+        top_k_preds = torch.topk(total_top1_word_preds, num_top_words)
+        top_k_ixs_vals = [row for row in zip([vocabulary.itos[i.item()] for i in top_k_preds.indices], [v.item() for v in top_k_preds.values])]
+        top_k_string = '\n'.join([i[0] + (' ' * (40 - len(i[0]))) + str(i[1]) for i in top_k_ixs_vals])
+        print(f'\n\n{"*&*" * 12} \n\t{num_top_words} top-1 predicted words: \n{top_k_string} \n{"*&*" * 12} \n\n')
+
+        accuracy = total_correct_preds / total_num_words
+        # if phase == 'val':
+        print(f'{phase} accuracy: {accuracy} \t ({total_correct_preds}/{total_num_words} correctly predicted)')
+    return (epoch_loss / i), accuracy
 
 
 def repackage_hidden(h):

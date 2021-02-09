@@ -25,6 +25,8 @@ parameters['data_subset_size'] = 0.5
 full_data_name = 'bnc_full_proc_data'
 subset_data_name = full_data_name + '_shffl_sub-' + str(parameters['data_subset_size']).strip("0").strip(".")
 
+parameters['bnc_texts_dir'] = parameters['general_data_dir'] + 'British_National_Corpus/Texts/'
+
 parameters['bnc_data_dir'] = parameters['general_data_dir'] + 'British_National_Corpus/bnc_full_processed_data/'
 parameters['bnc_data'] = parameters['bnc_data_dir'] + full_data_name + '.txt'
 parameters['bnc_tags'] = parameters['bnc_data_dir'] + full_data_name + '_tags.txt'
@@ -33,7 +35,7 @@ parameters['bnc_subset_data'] = parameters['bnc_data_dir'] + subset_data_name + 
 parameters['bnc_subset_tags'] = parameters['bnc_data_dir'] + subset_data_name + '_tags.txt'
 
 bnc_data_name = subset_data_name if parameters['use_data_subset'] else full_data_name
-dataset_dir = root_dir + 'data/'
+dataset_dir = root_dir + 'data/prev_parse/'
 dataset_name = bnc_data_name + '_seqlist_deptree'
 parameters['dataset_path'] = dataset_dir + dataset_name + '.json'
 
@@ -57,13 +59,13 @@ parameters['embedding_dim'] = 768 # Hidden unit dimension TODO: CHANGE TO 768? (
 parameters['word_emb_dim'] = 300 # TODO: CHANGE TO 300 # PREV 50
 
 # SEQ2SEQ TRAINING
-parameters['learning_rate'] = 0.01
+parameters['learning_rate'] = 0.1
 parameters['num_layers'] = 1
 parameters['dec_dropout'] = 0 # 0.5 NON-ZERO ONLY WORKS IF NUM_LAYERS > 1
-parameters['num_epochs'] = 10
+parameters['num_epochs'] = 100
 parameters['split_ratios'] = [.8, .1, .1]
-parameters['teacher_forcing_ratio'] = 0.5
-parameters['batch_size'] = 15
+parameters['teacher_forcing_ratio'] = 0.75
+parameters['batch_size'] = 2 #15
 
 # if True sorts samples based on the length of the sequence
 # to construct batches of the same size. This helps minimise
@@ -75,7 +77,7 @@ parameters['shuffle_train_val_data'] = True
 parameters['repeat_train_val_iter'] = False
 
 parameters['all_models_dir'] = root_dir + 'model/'
-parameters['model_name'] = dataset_name + \
+parameters['model_name'] = 'DEBUG_' + dataset_name + \
                             '_voc-' + str(parameters['vocab_cutoff']) + \
                             '_w-emb-' + str(parameters['word_emb_dim']) + \
                             '_btch-' + str(parameters['batch_size']) + \
