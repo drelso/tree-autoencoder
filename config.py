@@ -70,8 +70,8 @@ parameters['num_layers'] = 1
 parameters['dec_dropout'] = 0 # 0.5 NON-ZERO ONLY WORKS IF NUM_LAYERS > 1
 parameters['num_epochs'] = 100
 parameters['split_ratios'] = [.8, .1, .1]
-parameters['teacher_forcing_ratio'] = 0.75
-parameters['batch_size'] = 2 #15
+parameters['teacher_forcing_ratio'] = 0.5
+parameters['batch_size'] = 1 #15
 
 # if True sorts samples based on the length of the sequence
 # to construct batches of the same size. This helps minimise
@@ -83,7 +83,7 @@ parameters['shuffle_train_val_data'] = True
 parameters['repeat_train_val_iter'] = False
 
 parameters['all_models_dir'] = root_dir + 'model/'
-parameters['model_name'] = 'DEBUG_' + dataset_name + \
+parameters['model_name'] =  dataset_name + \
                             '_voc-' + str(parameters['vocab_cutoff']) + \
                             '_w-emb-' + str(parameters['word_emb_dim']) + \
                             '_btch-' + str(parameters['batch_size']) + \

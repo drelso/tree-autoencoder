@@ -348,6 +348,10 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
     total_top1_word_preds = torch.zeros(vocab_size)
 
     with grad_ctx_manager:
+        batch_fwd_times = []
+        batch_post_times = []
+        batch_times = []
+
         for batch_num, batch in enumerate(data_batches):
             batch_input_list = []
             batch_target = []
@@ -357,9 +361,17 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
             if phase == 'train':
                 optimizer.zero_grad()
             
-            if batch_num in [100, 500, 1000, 3000, 10000, 50000, 100000, 500000, 1000000]: # break ## TODO: REMOVE, DEBUGGING!
+            if not batch_num % 1000:
                 elapsed_time = time.time() - start_time
-                print(f'{"=" * 20} \n\t Batch number {batch_num} elapsed time: {elapsed_time} \n {"=" * 20} \n')
+                print(f'{"=" * 20} \n\t Batch number {batch_num} elapsed time: {elapsed_time} \n {"=" * 20} \n', flush=True)
+                mem_check(device, legend=str(i) + ' samples') # MEM DEBUGGING
+                if batch_times:
+                    print(f'\n\nAverage full batch times: {np.average(batch_times)}')
+                    print(f'Average forward batch times: {np.average(batch_fwd_times)}')
+                    print(f'Average post batch times: {np.average(batch_post_times)}')
+                print_preds = True
+            else:
+                print_preds = False
 
             while len(batch):
                 sample = batch.pop()
@@ -397,22 +409,30 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
 
             batch_target_tensor = torch.tensor(batch_target, device=device, dtype=torch.long).transpose(0, 1)
             
-            if print_epoch and (batch_num == 0 or batch_num == 198):
-                print_preds = True
-            else:
-                print_preds = False
+            # if print_epoch and (batch_num == 0 or batch_num == 198):
+            #     print_preds = True
+            # else:
+            #     print_preds = False
 
             checkpoint_sample = not i % math.ceil(len(data_iter) / 10) # or batch_num > len(data_iter) - 1
             if print_epoch and checkpoint_sample and phase == 'train':
                 elapsed_time = time.time() - start_time
                 print(f'\nElapsed time after {i} samples ({batch_num} batches): {elapsed_time} \n\t Largest batch: {largest_batch_seq}', flush=True)
-                # mem_check(device, legend=str(i) + ' samples') # MEM DEBUGGING
+                mem_check(device, legend=str(i) + ' samples') # MEM DEBUGGING
             
             # num_correct_preds IS ONLY CALCULATED IN VALIDATION PHASE, IN TRAINING IT WILL ALWAYS EQUAL 0
-            output, enc_hidden, dec_hidden, num_correct_preds = model(batch_input, batch_target_tensor, teacher_forcing_ratio=teacher_forcing_ratio, phase=phase, print_preds=print_preds)
+            batch_start_time = time.time()
+            output, enc_hidden, dec_hidden, num_correct_preds = model(
+                            batch_input, 
+                            batch_target_tensor, 
+                            teacher_forcing_ratio=teacher_forcing_ratio,
+                            phase=phase, 
+                            print_preds=print_preds)
             
             total_num_words += batch_seq_len
             total_correct_preds += num_correct_preds
+            
+            batch_fwd_times.append(time.time() - batch_start_time)
 
             ## seq2seq.py
             # "as the loss function only works on 2d inputs
@@ -436,6 +456,8 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
                 #    DUE TO THE TENSOR BEING NON-CONTIGUOUS)
                 batch_target_tensor = batch_target_tensor[1:].T.reshape(-1)
             
+            batch_post_times.append(time.time() - batch_start_time)
+
             # SUM ALL PREDICTIONS PER WORD
             total_word_preds += output.sum(dim=0)
             # INCREMENT INDICES OF WORDS THAT APPEAR AS TOP 1 PREDICTION
@@ -455,6 +477,8 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
                 enc_hidden = repackage_hidden(enc_hidden)
                 dec_hidden = repackage_hidden(dec_hidden)
             
+            batch_times.append(time.time() - batch_start_time)
+
             epoch_loss += loss.detach().item()
         # mem_check(device, legend='Finished processing batches') # MEM DEBUGGING
         print(f'Skipped {len(batches_skipped_lengths)} batches with lengths: {batches_skipped_lengths}', flush=True)

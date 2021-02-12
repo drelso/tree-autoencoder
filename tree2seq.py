@@ -56,7 +56,7 @@ from utils.funcs import print_parameters, dir_validation, memory_stats
 from utils.text_utils import ixs_to_words
 
 # @DEBUG:
-from config_temp import parameters
+from config import parameters
 
 
 
@@ -147,9 +147,9 @@ if __name__ == '__main__':
         batch_sizes=(parameters['batch_size'], parameters['batch_size']),
         # device=parameters['device'],
         device=DEVICE,
-        sort=parameters['sort_train_val_data'],
+        # sort=parameters['sort_train_val_data'],
+        # sort_key=lambda x: len(x.seq),
         # sort_within_batch=True,
-        sort_key=lambda x: len(x.seq),
         shuffle=parameters['shuffle_train_val_data'],
         repeat=parameters['repeat_train_val_iter']
     )
@@ -161,28 +161,6 @@ if __name__ == '__main__':
         device=DEVICE,
         repeat=parameters['repeat_train_val_iter']
     )
-
-    print(dir(test_iter))
-    # print("test_iter.data", test_iter.data())
-    print("test_iter.data", dir(test_iter.data))
-    print("test_iter.dataset", dir(test_iter.dataset))
-
-    for i, sample in enumerate(test_iter.data()):
-        print('seq:', ixs_to_words(sample.seq, vocabulary))
-        if i > 10: break
-
-    data_batches = torchtext.data.batch(test_iter.data(), test_iter.batch_size, test_iter.batch_size_fn)
-
-    print('\n\nBATCH PROCESSING: \n\n')
-
-    for i, batch in enumerate(data_batches):
-        print('Batch number: ', i)
-        print('seq:', ixs_to_words(batch[0].seq, vocabulary))
-        print('seq:', ixs_to_words(batch[1].seq, vocabulary))
-        if i > 10: break
-
-    exit()
-
     
     losses = []
     accuracies = []
@@ -195,7 +173,15 @@ if __name__ == '__main__':
         epoch_start_time = time.time()
 
         print(f'\n Epoch {epoch} training... \n')
-        epoch_loss, epoch_accuracy = run_model(train_iter, model, optimizer, criterion, vocabulary, device=DEVICE, phase='train', max_seq_len=parameters['max_seq_len'])
+        epoch_loss, epoch_accuracy = run_model(
+            train_iter, 
+            model, 
+            optimizer, 
+            criterion, 
+            vocabulary, 
+            device=DEVICE, 
+            phase='train', 
+            max_seq_len=parameters['max_seq_len'])
         losses.append(epoch_loss)
         accuracies.append(epoch_accuracy)
 
