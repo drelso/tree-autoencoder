@@ -99,6 +99,6 @@ parameters['checkpoints_path'] = parameters['checkpoints_dir'] + parameters['mod
 parameters['param_name'] = 'encoder.word_embedding'
 parameters['word_embs_path'] = parameters['model_dir'] + 'tree_input_word_embs.npy'
 
-parameters['max_seq_len'] = 200
+parameters['max_seq_len'] = 60
 
 parameters['vocabulary_indices'] = parameters['model_dir'] + 'vocabulary-' + str(parameters['vocab_cutoff']) + '_wordixs_' + dataset_name + '.csv'

@@ -353,6 +353,7 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
         batch_times = []
 
         for batch_num, batch in enumerate(data_batches):
+            batch_start_time = time.time()
             batch_input_list = []
             batch_target = []
             largest_seq = 0
@@ -361,7 +362,9 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
             if phase == 'train':
                 optimizer.zero_grad()
             
-            if not batch_num % 1000:
+            print_preds = not i % math.ceil(len(data_iter) / 100) # or batch_num > len(data_iter) - 1
+
+            if print_preds:
                 elapsed_time = time.time() - start_time
                 print(f'{"=" * 20} \n\t Batch number {batch_num} elapsed time: {elapsed_time} \n {"=" * 20} \n', flush=True)
                 mem_check(device, legend=str(i) + ' samples') # MEM DEBUGGING
@@ -369,9 +372,6 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
                     print(f'\n\nAverage full batch times: {np.average(batch_times)}')
                     print(f'Average forward batch times: {np.average(batch_fwd_times)}')
                     print(f'Average post batch times: {np.average(batch_post_times)}')
-                print_preds = True
-            else:
-                print_preds = False
 
             while len(batch):
                 sample = batch.pop()
@@ -414,14 +414,13 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
             # else:
             #     print_preds = False
 
-            checkpoint_sample = not i % math.ceil(len(data_iter) / 10) # or batch_num > len(data_iter) - 1
-            if print_epoch and checkpoint_sample and phase == 'train':
+            if print_epoch and print_preds and phase == 'train':
                 elapsed_time = time.time() - start_time
                 print(f'\nElapsed time after {i} samples ({batch_num} batches): {elapsed_time} \n\t Largest batch: {largest_batch_seq}', flush=True)
                 mem_check(device, legend=str(i) + ' samples') # MEM DEBUGGING
             
             # num_correct_preds IS ONLY CALCULATED IN VALIDATION PHASE, IN TRAINING IT WILL ALWAYS EQUAL 0
-            batch_start_time = time.time()
+            batch_fwd_start_time = time.time()
             output, enc_hidden, dec_hidden, num_correct_preds = model(
                             batch_input, 
                             batch_target_tensor, 
@@ -432,7 +431,7 @@ def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.d
             total_num_words += batch_seq_len
             total_correct_preds += num_correct_preds
             
-            batch_fwd_times.append(time.time() - batch_start_time)
+            batch_fwd_times.append(time.time() - batch_fwd_start_time)
 
             ## seq2seq.py
             # "as the loss function only works on 2d inputs

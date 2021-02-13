@@ -84,7 +84,7 @@ if __name__ == '__main__':
 
     
     ## CONSTRUCT VOCABULARY OBJECT FROM COUNTS FILE
-    VOCABULARY = build_vocabulary(parameters['counts_file'], parameters['vocabulary_indices'],min_freq=parameters['vocab_cutoff'])
+    VOCABULARY = build_vocabulary(parameters['counts_file'], parameters['vocabulary_indices'], min_freq=parameters['vocab_cutoff'])
 
     ## NUMERICALISE THE DATASET
     if not os.path.exists(parameters['num_dataset']):

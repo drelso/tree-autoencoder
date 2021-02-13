@@ -5,7 +5,8 @@
 ##
 
 import csv
-from collections import Counter
+import json
+from collections import Counter, OrderedDict
 import torchtext
 
 def build_vocabulary(counts_file, min_freq=1):
@@ -67,6 +68,49 @@ def ixs_to_words(ixs_list, vocabulary):
     return [vocabulary.itos[i] for i in ixs_list]
 
 
+def sents_max_len(dataset_path, max_len=100):
+    """
+    Prints the proportion of datapoints for
+    a given sentence length threshold
+
+    Requirements
+    ------------
+    import json
+    from collections import Counter, OrderedDict
+    
+    Parameters
+    ----------
+    dataset_path : str
+        path to dataset file in JSON format,
+        where every datapoint contains a 'seq'
+        of tokens
+    max_len : int, optional
+        maximum length threshold for sequence
+        length
+    """
+
+    lengths = []
+
+    with open(dataset_path, 'r', encoding='utf-8') as d:
+        for line in d.readlines():
+            sample = json.loads(line)
+            lengths.append(len(sample['seq']))
+
+    len_counter = Counter(lengths)
+    ordered_counts = OrderedDict(sorted(dict(len_counter).items()))
+
+    sents_in = 0
+    sents_out = 0
+
+    for k,v in ordered_counts.items():
+        if k < max_len:
+            sents_in += v
+        else:
+            sents_out += v
+    
+    total = sents_in + sents_out
+
+    print(f'Sentences included: {sents_in} ({int((sents_in/total)*100)}%) \t Sentences excluded: {sents_out}')
 
 
 
