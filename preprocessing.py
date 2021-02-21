@@ -8,7 +8,7 @@ import os
 import json
 
 from config import parameters
-from utils.preprocessing import process_all_datafiles, shuffle_and_subset_dataset, word_counts, dataset_to_wordlist, build_vocabulary, seqlist_deptree_data, train_validate_test_split
+from utils.preprocessing import process_all_datafiles, shuffle_and_subset_dataset, word_counts, dataset_to_wordlist, build_vocabulary, seqlist_deptree_data, train_validate_test_split, json_to_npy, npy_dataset_to_tensors
 from utils.funcs import print_parameters
 from treelstm.training_utils import numericalise_dataset
 
@@ -16,11 +16,9 @@ import sys
 import psutil
 
 
-
 if __name__ == '__main__':
     print_parameters(parameters)
     
-
     # PROCESS ALL TEXT FILES AND SAVE TO A SINGLE
     # RAW TEXT FILE
     if not os.path.exists(parameters['bnc_data']):
@@ -92,3 +90,22 @@ if __name__ == '__main__':
         numericalise_dataset(parameters['dataset_path'], parameters['num_dataset'], VOCABULARY)
     else:
         print(f'Numericalised file found at {parameters["num_dataset"]}')
+
+    ## CONVERT DATASET TO NPY
+    if not os.path.exists(parameters['npy_dataset']):
+        print(f'No NPY dataset file found at {parameters["npy_dataset"]}, creating NPY file from dataset at {parameters["num_dataset"]}')
+        json_to_npy(parameters['num_dataset'], parameters['npy_dataset'])
+    else:
+        print(f'NPY dataset file found at {parameters["npy_dataset"]}')
+        
+    ## SAVE DATA AS TORCH TENSOR
+    if not os.path.exists(parameters['tensor_dataset']):
+        print(f'No torch.tensor dataset file found at {parameters["tensor_dataset"]}, creating tensor file from dataset at {parameters["num_dataset"]}')
+        
+        import torch
+        DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        print(f"Saving tensors for device: {DEVICE}")
+
+        npy_dataset_to_tensors(parameters['npy_dataset'], parameters['tensor_dataset'], VOCABULARY, device=DEVICE)
+    else:
+        print(f'torch.tensor dataset file found at {parameters["tensor_dataset"]}')

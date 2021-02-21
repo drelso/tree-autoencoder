@@ -6,6 +6,7 @@
 
 import os
 import sys
+import gc
 
 import psutil
 
@@ -22,6 +23,7 @@ from nltk.corpus import wordnet as wn # process_data
 
 import contextlib
 
+import torch
 import torchtext
 
 # Code required for conditional "with", used
@@ -30,7 +32,6 @@ import torchtext
 def dummy_context_mgr():
     yield None
     
-
 
 def raw_text_from_elem_tree(filename, use_headwords=False, replace_nums=False, replace_unclass=False):
     """
@@ -589,6 +590,130 @@ def dataset_to_wordlist(datafile, preserve_sents=True):
         print('Num words ', num_words)
         print('Num lines ', line_num)
     return tokenised_data
+
+
+def json_to_npy(json_data, npy_file):
+    """
+    Save a JSON dataset as an NPY file
+
+    Requirements
+    ------------
+    import json
+    import numpy as np
+    
+    Parameters
+    ----------
+    json_data : str
+        path to JSON data file
+    npy_data : str
+        path to save NPY data file to
+    """
+    with open(json_data, 'r') as f:
+        data = f.readlines()
+        npy_data = []
+        for i in data:
+            npy_data.append(json.loads(i))
+    
+    print(f'Saving JSON data ({len(npy_data)} datapoints) to {npy_file}')
+    np.save(npy_file, npy_data)
+
+
+### COPIED FROM TRAINING UTILS
+### FIX PACKAGE STRUCTURE TO ALLOW
+### IMPORT FROM SIBLING DIRECTORIES
+def treedict_to_tensor(treedict, device=torch.device('cpu')):
+    """
+    Convert tree dictionary to a tensor dictionary
+
+    Requirements
+    ------------
+    import torch
+    
+    Parameters
+    ----------
+    treedict : {int OR str : [int] OR torch.tensor}
+        dictionary to convert
+    device : torch.device, optional
+        device for tensor construction
+        (default: torch.device('cpu'))
+
+    Returns
+    -------
+    {int OR str : torch.tensor} 
+    """
+    tensor_dict = {}
+    for key, value in treedict.items():
+        if torch.is_tensor(value):
+            tensor_dict[key] = value#.clone().detach().requires_grad_(True)
+        else:
+            tensor_dict[key] = torch.tensor(value, device=device, dtype=torch.long)#dtype=torch.int)#float).requires_grad_(True)#
+    return tensor_dict
+
+
+def npy_dataset_to_tensors(npy_dataset, tensor_dataset, vocabulary, device=torch.device('cpu')):
+    """
+    Save an NPY dataset as an torch.tensor file
+
+    Requirements
+    ------------
+    import torch
+    treedict_to_tensor (local function)
+    
+    Parameters
+    ----------
+    npy_dataset : str
+        path to NPY data file
+    tensor_dataset : str
+        path to save tensor data file to
+    vocabulary : torchtext.vocab.Vocab
+        torchtext Vocab object
+    device : torch.device, optional
+        device for tensor construction
+        (default: torch.device('cpu'))
+    """
+    print(f'Processing tensors for device {device}')
+    data = []
+    print(f'Loading NPY dataset from {npy_dataset}')
+    dataset = np.load(npy_dataset)
+
+    mem_check(device, legend='after data loading')
+
+    print(f'Processing NPY data ({len(dataset)} samples)')
+
+    for i, sample in enumerate(dataset):
+        tree_tensor = treedict_to_tensor(sample['tree'], device=device)
+        seq = [vocabulary.stoi['<sos>']] + sample['seq'] + [vocabulary.stoi['<eos>']]
+        seq_tensor = torch.tensor(seq, device=device, dtype=torch.long).unsqueeze(0).transpose(0, 1)
+        data.append({'tree' : tree_tensor, 'seq' : seq_tensor})
+        if not i % 10000:
+            mem_check(device, legend=str(i) + ' samples')
+    
+    print('Deleting dataset and forcing garbage collection')
+    del dataset
+    gc.collect()
+
+    print(f'\n\nSaving ({len(data)} tensors to {tensor_dataset})\n', flush=True)
+    torch.save(data, tensor_dataset)
+
+
+### FROM TRAINING UTILS
+### CORRECT PACKAGING
+def mem_check(device, legend=0):
+    conversion_rate = 2**30 # CONVERT TO GB
+    print(f'\n\n Mem check {legend}\n')
+    print('GPU Usage:')
+    mem_alloc = torch.cuda.memory_allocated(device=device) / conversion_rate
+    mem_reserved = torch.cuda.memory_reserved(device=device) / conversion_rate
+    os.system('nvidia-smi')
+    print(f' +++++++++++ torch.cuda.memory_allocated {mem_alloc}GB', flush=True)
+    print(f' +++++++++++ torch.cuda.memory_reserved {mem_reserved}GB \n', flush=True)
+    print('\n\nCPU Usage:')
+    pid = os.getpid()
+    proc = psutil.Process(pid)
+    # mem_gb = "{:.2f}".format(proc.memory_info()[0] / conversion_rate)
+    mem_gb = proc.memory_info()[0] / conversion_rate
+    mem_percent = "{:.2f}".format(proc.memory_percent())
+    print(f' +++++++++++ CPU used: {mem_gb}GB \t {mem_percent}%', flush=True)
 
 
 def word_counts(tokenised_data, save_file):

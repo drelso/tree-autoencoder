@@ -109,6 +109,6 @@ class Tree2Seq(nn.Module):
             input = trg[t] if teacher_force else top1
 
         if print_preds:
-            print('End of predictions')
+            print('End of predictions', flush=True)
         
         return outputs, enc_hidden, dec_hidden, NUM_CORRECT_PREDS

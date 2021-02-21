@@ -19,7 +19,7 @@ parameters = {}
 parameters['general_data_dir'] = home + '/data/'
 
 parameters['use_data_subset'] = True
-parameters['data_subset_size'] = 0.5
+parameters['data_subset_size'] = 0.1
 
 # CONSTRUCT PATHS TO DATASET, COUNTS, NUMERICALISED DATA
 full_data_name = 'bnc_full_proc_data'
@@ -52,8 +52,15 @@ parameters['remove_punct'] = True
 # parameters['counts_file'] = dataset_dir + 'counts_bnc_full_seqlist_deptree.csv'
 parameters['vocab_cutoff'] = 5
 
+parameters['vocabulary_indices'] = dataset_dir + 'vocabulary-' + str(parameters['vocab_cutoff']) + '_wordixs_' + dataset_name + '.csv'
+
 # parameters['num_data_save_path'] = dataset_dir + dataset_name + '_numeric_voc-' + str(parameters['vocab_cutoff']) + '.json'
-parameters['num_dataset'] = dataset_dir + 'num_voc-' + str(parameters['vocab_cutoff']) + '_' + dataset_name + '.json'
+num_dataset_path = dataset_dir + 'num_voc-' + str(parameters['vocab_cutoff']) + '_' + dataset_name
+parameters['num_dataset'] = num_dataset_path + '.json'
+parameters['npy_dataset'] = num_dataset_path + '.npy'
+parameters['tensor_dataset'] = num_dataset_path + '.pt'
+
+parameters['use_tensor_data'] = True
 
 # DATASET SPLITS
 # parameters['train_data'] = dataset_dir + dataset_name + '_train.json'
@@ -100,5 +107,3 @@ parameters['param_name'] = 'encoder.word_embedding'
 parameters['word_embs_path'] = parameters['model_dir'] + 'tree_input_word_embs.npy'
 
 parameters['max_seq_len'] = 60
-
-parameters['vocabulary_indices'] = parameters['model_dir'] + 'vocabulary-' + str(parameters['vocab_cutoff']) + '_wordixs_' + dataset_name + '.csv'

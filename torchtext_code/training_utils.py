@@ -58,34 +58,21 @@ def build_vocabulary(counts_file, vocab_ixs_file, min_freq=1):
     '''
     counts_dict = {}
 
-    print(f'{"@" * 30}\nVOCABULARY CONSTRUCTION\n{"@" * 30}')
     print(f'Constructing vocabulary from counts file in {counts_file}')
-
-    num_inc = 0
-    num_exc = 0
 
     with open(counts_file, 'r', encoding='utf-8') as f:
         reader = csv.reader(f)
         for row in reader:
             # FIRST COLUMN IS ASSUMED TO BE THE WORD AND
             # THE SECOND COLUMN IS ASSUMED TO BE THE COUNT
-            w_count = int(row[1])
-            counts_dict[row[0]] = w_count
-            if w_count < min_freq:
-                num_exc += w_count
-            else:
-                num_inc += w_count
+            counts_dict[row[0]] = int(row[1])
 
     counts = Counter(counts_dict)
     del counts_dict
     
     vocabulary = torchtext.vocab.Vocab(counts, min_freq=min_freq, specials=['<unk>', '<sos>', '<eos>', '<pad>'])
-    perc_toks = "{:.2f}".format((len(vocabulary) / len(counts)) * 100) + '%'
-    print(f'{len(vocabulary)} unique tokens in vocabulary with minimum frequency {min_freq} ({perc_toks} of {len(counts)} unique tokens in full dataset)')
-
-    perc_inc = "{:.2f}".format((num_inc / (num_inc + num_exc)) * 100) + '%'
-    print(f'{num_inc} of {(num_inc + num_exc)} words, vocabulary coverage of {perc_inc}')
-
+    print(f'{len(vocabulary)} unique tokens in vocabulary with (with minimum frequency {min_freq})')
+    
     # SAVE LIST OF VOCABULARY ITEMS AND INDICES TO FILE
     with open(vocab_ixs_file, 'w+', encoding='utf-8') as v:
         vocabulary_indices = [[i, w] for i,w in enumerate(vocabulary.itos)]
@@ -179,26 +166,7 @@ def list_to_tensor(x_list, device=torch.device('cpu')):
     return torch.tensor(x_list, device=device, dtype=torch.long)#dtype=torch.int)
 
 
-def treedict_to_tensor(treedict, device=torch.device('cpu')):
-    """
-    Convert tree dictionary to a tensor dictionary
-
-    Requirements
-    ------------
-    import torch
-    
-    Parameters
-    ----------
-    treedict : {int OR str : [int] OR torch.tensor}
-        dictionary to convert
-    device : torch.device, optional
-        device for tensor construction
-        (default: torch.device('cpu'))
-
-    Returns
-    -------
-    {int OR str : torch.tensor} 
-    """
+def treedict_to_tensor(treedict, device=torch.device('cpu')):#default_device):
     tensor_dict = {}
     for key, value in treedict.items():
         if torch.is_tensor(value):
@@ -208,76 +176,7 @@ def treedict_to_tensor(treedict, device=torch.device('cpu')):
     return tensor_dict
 
 
-def construct_dataset_splits(dataset_path, split_ratios=[.8, .1, .1]):
-    '''
-    Read NPY dataset and split into training,
-    test and validation sets
-
-    Requirements
-    ------------
-    import torch
-    import numpy as np
-
-    Parameters
-    ----------
-    dataset_path : str
-        path to the file containing the NPY or tensor
-        dataset with the sequence list and dependency
-        parse trees
-    split_ratios : [float], optional
-        split ratios for training, validation, (and test) sets
-        respectively. Should add up to 1. (default: [.8, .1, .1])
-    
-    Returns
-    -------
-    torchtext.Dataset
-        train data split as torchtext.Dataset object
-    torchtext.Dataset
-        test data split as torchtext.Dataset object
-    torchtext.Dataset
-        validation data split as torchtext.Dataset object
-    '''
-
-    if np.sum(split_ratios) != 1:
-        raise ValueError(f'Split ratios must add up to one, {split_ratios} given')
-    
-    if len(split_ratios) < 1 or len(split_ratios) < 3:
-        raise ValueError(f'split_ratios must have 2 (train-validate) or 3 (train-test-validate) values, {len(split_ratios)} given in {split_ratios}')
-
-    print(f'Constructing dataset from {dataset_path}', flush=True)
-
-    if dataset_path.endswith(".npy"):
-        print('Loading NPY file')
-        data = np.load(dataset_path)
-    elif dataset_path.endswith(".pt"):
-        print('Loading tensor file')
-        data = torch.load(dataset_path)
-    else:
-        raise ValueError(f'Dataset must be in NPY (.npy) or tensor (.pt) format')
-    
-    data_size = len(data)
-    print(f'{data_size} datapoints loaded', flush=True)
-
-    split_ixs = np.random.choice(a=data_size, size=data_size, replace=False)
-    train_split = int(split_ratios[0] * data_size)
-    train = data[:train_split]
-
-    if len(split_ratios) == 2:
-        validate = data[train_split:]
-        print(f'Split sizes: \t train {len(train)} \t validate {len(validate)}')
-        return train, validate
-    
-    if len(split_ratios) == 3:
-        val_split = int(split_ratios[1] * data_size) + train_split
-        validate = data[train_split : val_split]
-        test = data[val_split:]
-    
-    print(f'Split sizes: \t train {len(train)} \t validate {len(validate)} \t test {len(test)}')
-
-    return train, validate, test
-
-
-def construct_torchtext_splits(dataset_path, vocabulary, split_ratios=[.8, .1, .1]):
+def construct_dataset_splits(dataset_path, vocabulary, split_ratios=[.8, .1, .1]):
     '''
     Construct torchtext.Dataset object and split into training,
     test and validation sets
@@ -427,7 +326,7 @@ def sizeof_fmt(num, suffix='B'):
     return "%.6f %s%s" % (num, 'Yi', suffix)
 
 
-def run_model_batches(data_iter, model, optimizer, criterion, vocabulary, device=torch.device('cpu'), phase='train', max_seq_len=200, teacher_forcing_ratio=0.5, print_epoch=True):
+def run_model(data_iter, model, optimizer, criterion, vocabulary, device=torch.device('cpu'), phase='train', max_seq_len=200, teacher_forcing_ratio=0.5, print_epoch=True):
     '''
     Run training or validation processes given a 
     model and a data iterator.
@@ -605,6 +504,10 @@ def run_model_batches(data_iter, model, optimizer, criterion, vocabulary, device
                 elapsed_time = time.time() - start_time
                 print(f'\nElapsed time after {i} samples ({batch_num} batches): {elapsed_time} \n\t Largest batch: {largest_batch_seq}', flush=True)
                 # mem_check(device, legend=str(i) + ' samples (MID)') # MEM DEBUGGING
+                # print(f'Model size: {sizeof_fmt(sys.getsizeof(model))}') # MEM DEBUGGING
+                # print(f'optimizer size: {sizeof_fmt(sys.getsizeof(optimizer))}') # MEM DEBUGGING
+                # print(f'criterion size: {sizeof_fmt(sys.getsizeof(criterion))}') # MEM DEBUGGING
+                # print(f'vocabulary size: {sizeof_fmt(sys.getsizeof(vocabulary))}') # MEM DEBUGGING
 
             # num_correct_preds IS ONLY CALCULATED IN VALIDATION PHASE, IN TRAINING IT WILL ALWAYS EQUAL 0
             batch_fwd_start_time = time.time()
@@ -717,244 +620,6 @@ def run_model_batches(data_iter, model, optimizer, criterion, vocabulary, device
         accuracy = total_correct_preds / total_num_words
         # if phase == 'val':
         print(f'{phase} accuracy: {accuracy} \t ({total_correct_preds}/{total_num_words} correctly predicted)')
-    return (epoch_loss / i), accuracy
-
-
-
-def run_model(dataset, model, optimizer, criterion, vocabulary, device=torch.device('cpu'), phase='train', max_seq_len=200, teacher_forcing_ratio=0.5, tensor_data=False, print_epoch=True):
-    '''
-    Run training or validation processes given a 
-    model and a data iterator.
-
-    Requirements
-    ------------
-    treedict_to_tensor (local function)
-    dummy_context_mgr (local function)
-    repackage_hidden (local function)
-
-    Parameters
-    ----------
-    dataset : NPY array
-        NPY array with format
-        {'id': int, 'seq': [int], 'tree': {...}}
-    model : torch.nn.Module
-        PyTorch model to train
-    optimizer : torch.optim.Optimizer
-        PyTorch optimizer object to use
-    criterion : torch.nn.###Loss
-        PyTorch loss function to use
-    vocabulary : torchtext.Vocab
-        vocabulary object to use
-    device : torch.device or int
-        device to run the model on
-        (default: torch.device('cpu'))
-    phase : str, optional
-        whether to run a 'train' or 'validation'
-        process (default: 'train')
-    tensor_data : bool, optional
-        whether to process dataset as tensors (.pt)
-        otherwise assume datase is NPY (.npy)
-        (default: False)
-    print_epoch : bool, optional
-        whether to produce output in this epoch
-        (default: True)
-    
-    Returns
-    -------
-    float
-        full epoch loss (total loss for all batches
-        divided by the number of datapoints)
-    '''
-    # tracemalloc.start() # MEMORY DEBUGGING!!!
-
-    if phase == 'train':
-        model.train()
-        optimizer.zero_grad()
-        grad_ctx_manager = dummy_context_mgr()
-        break_after_num = 1000
-    else:
-        model.eval()
-        grad_ctx_manager = torch.no_grad()
-        break_after_num = 100
-    
-    epoch_loss = 0.0
-    vocab_size = len(vocabulary) # ALSO input_dim
-    
-    start_time = time.time()
-    
-    print(f'Running {phase} phase ({len(dataset)} datapoints)...')
-    
-    largest_batch_seq = 0
-    skipped_lengths = []
-
-    total_num_words = 0
-    total_correct_preds = 0
-
-    total_word_preds = torch.zeros(vocab_size)
-    total_top1_word_preds = torch.zeros(vocab_size)
-
-    with grad_ctx_manager:
-        start_mem = get_current_mem() # MEM DEBUGGING!!!
-
-        fwd_times = []
-        post_times = []
-        times = []
-
-        for i, sample in enumerate(dataset):
-            sample_start_time = time.time()
-            if phase == 'train':
-                optimizer.zero_grad()
-            
-            print_preds = not i % math.ceil(len(dataset) / 500) # or batch_num > len(data_iter) - 1
-
-            if print_preds:
-                elapsed_time = time.time() - start_time
-                print(f'{"=" * 20} \n\t Elapsed time after {i} samples: {elapsed_time} \n{"=" * 20} \n', flush=True)
-                last_mem = mem_diff(start_mem, legend="from start_mem (cumulative) (#1)") # MEM DEBUGGING!!!
-
-                mem_check(device, legend=str(i) + ' samples (START)') # MEM DEBUGGING
-                
-                if times:
-                    print(f'\n\nAverage full sample times: {np.average(times)}')
-                    print(f'Average forward times: {np.average(fwd_times)}')
-                    print(f'Average post times: {np.average(post_times)}')
-            
-            if tensor_data:
-                # Data previously processed and stored as (CUDA) tensors
-                input_tree = sample['tree']
-                # Processed sequence has additional <sos> and <eos> tokens
-                seq_len = len(sample['seq']) - 2
-                target_seq = sample['seq']
-            else:
-                # Convert NPY data to tensors
-                input_tree = treedict_to_tensor(sample['tree'], device=device)
-                proc_seq = [vocabulary.stoi['<sos>']] + sample['seq'] + [vocabulary.stoi['<eos>']]
-                seq_len = len(sample['seq'])
-                target_seq = torch.tensor(proc_seq, device=device, dtype=torch.long).unsqueeze(0).transpose(0, 1)
-
-            if print_preds: last_mem = mem_diff(last_mem, legend="after datapoint construction (#2)") # MEM DEBUGGING!!!
-            
-            if seq_len > max_seq_len or seq_len < 2:
-                # Skip batch if sequence length is larger than allowed
-                # or contains a single token
-                skipped_lengths.append(seq_len)
-                continue
-
-            if print_preds: last_mem = mem_diff(last_mem, legend="after max_seq_len (#3)") # MEM DEBUGGING!!!
-
-            # if there is more than one element in the batch input
-            # process the batch with the treelstm.util.batch_tree_input
-            # utility function, else return the single element
-            # if len(batch_input_list) > 1:
-            #     batch_input = batch_tree_input(batch_input_list)
-            # else:
-            #     # PREVIOUS IMPLEMENTATION, USED WITH TREE PREPROCESSING
-                # batch_input = batch_input_list[0] 
-                # batch_input = treedict_to_tensor(sample.tree, device=device)
-
-            # if print_preds: last_mem = mem_diff(last_mem, legend="after batch_tree_input (#4))") # MEM DEBUGGING!!!
-
-            # batch_target_tensor = torch.tensor(batch_target, device=device, dtype=torch.long).transpose(0, 1)
-            
-            if print_epoch and print_preds and phase == 'train':
-                elapsed_time = time.time() - start_time
-                print(f'\nElapsed time after {i} samples: {elapsed_time}', flush=True)
-                last_mem = mem_diff(last_mem, legend="after batch_target_tensor (#5))") # MEM DEBUGGING!!!
-                
-            fwd_start_time = time.time()
-            # num_correct_preds IS ONLY CALCULATED IN VALIDATION PHASE, IN TRAINING IT WILL ALWAYS EQUAL 0
-            output, enc_hidden, dec_hidden, num_correct_preds = model(
-                            input_tree, 
-                            target_seq, 
-                            teacher_forcing_ratio=teacher_forcing_ratio,
-                            phase=phase, 
-                            print_preds=print_preds)
-            
-            total_num_words += seq_len
-            total_correct_preds += num_correct_preds
-            
-            if print_preds:
-                # mem_check(device, legend=str(i) + ' samples (AFTER FORWARD)') # MEM DEBUGGING
-                last_mem = mem_diff(last_mem, legend="after model() (#7))") # MEM DEBUGGING!!!
-            
-            fwd_times.append(time.time() - fwd_start_time)  # TIMING DEBUG!!!
-
-            ## seq2seq.py
-            # "as the loss function only works on 2d inputs
-            # with 1d targets we need to flatten each of them
-            # with .view"
-            # "we slice off the first column of the output
-            # and target tensors (<sos>)"
-            # print(f'\n\n ^^^^^^^^^^^^ \t PRE output.size() {output.size()}')
-            # TODO: SLICE OFF ALL <sos> TOKENS IN BATCH
-            # (REMOVE IXS RELATED TO batch_input['tree_sizes'])
-            
-            output = output.view(-1, vocab_size)[1:]#.view(-1)#, output_dim)
-            target_seq = target_seq.view(-1)[1:]
-            
-            if print_preds: last_mem = mem_diff(last_mem, legend="after batch_target_tensor reshape (#8)") # MEM DEBUGGING!!!
-
-            post_times.append(time.time() - sample_start_time)  # TIMING DEBUG!!!
-
-            # SUM ALL PREDICTIONS PER WORD
-            total_word_preds += output.sum(dim=0)
-            # INCREMENT INDICES OF WORDS THAT APPEAR AS TOP 1 PREDICTION
-            total_top1_word_preds.put_(output.argmax(dim=0), torch.ones(vocab_size), accumulate=True)
-            
-            loss = criterion(output, target_seq)
-            
-            if print_preds: last_mem = mem_diff(last_mem, legend="after loss (#9)") # MEM DEBUGGING!!!
-
-            if phase == 'train':
-                loss.backward()
-                optimizer.step()
-                ## MEMORY DEBUGGING
-                # ATTEMPT TO PREVENT GPU MEMORY OVERFLOW BY
-                # DETACHING THE HIDDEN STATES FROM THE MODEL,
-                # WHICH MAKES BPTT TRACK ONLY THE CURRENT BATCH
-                # INSTEAD OF THE FULL DATASET HISTORY
-                # (FROM https://discuss.pytorch.org/t/solved-why-we-need-to-detach-variable-which-contains-hidden-representation/1426/3)
-                # enc_hidden = repackage_hidden(enc_hidden)
-                # dec_hidden = repackage_hidden(dec_hidden)
-            
-            times.append(time.time() - sample_start_time) # TIMING DEBUG!!!
-            
-            if print_preds: last_mem = mem_diff(last_mem, legend="after backward (#10)") # MEM DEBUGGING!!!
-
-            epoch_loss += loss.detach().item()
-            
-            if print_preds:
-                # mem_check(device, legend=str(i) + ' samples (END)') # MEM DEBUGGING
-                mem_diff(last_mem, legend="(batch end) full diff (#11)") # MEM DEBUGGING!!!
-                # snapshot = tracemalloc.take_snapshot()
-                # print(f'\n\n{"@"*60}\n{"@"*60}\n \t\tMEMORY ALLOCATION SNAPSHOT \n{"@"*60}\n{"@"*60}\n')
-                # for stat in snapshot.statistics("lineno"):
-                #     print(stat)
-                #if i > break_after_num: break # @DEBUGGING
-            
-
-        mem_check(device, legend='Finished processing batches') # MEM DEBUGGING
-        print(f'Skipped {len(skipped_lengths)} batches with lengths: {skipped_lengths}', flush=True)
-
-        # ADD UP ALL INDIVIDUAL PREDICTIONS FOR WORDS AND PRINT
-        # THE TOP-K MOST PREDICTED WORDS, THIS HELPS KEEP TRACK
-        # OF PROBLEMS WITH PREDICTING ONLY THE MOST FREQUENT WORDS
-        num_top_words = 20
-        # ACCUMULATED SCORES
-        top_k_preds = torch.topk(total_word_preds, num_top_words)
-        top_k_ixs_vals = [row for row in zip([vocabulary.itos[i.item()] for i in top_k_preds.indices], [v.item() for v in top_k_preds.values])]
-        top_k_string = '\n'.join([i[0] + (' ' * (40 - len(i[0]))) + str(i[1]) for i in top_k_ixs_vals])
-        print(f'\n\n{"*&*" * 12} \n\t{num_top_words} highest-prediction words: \n{top_k_string} \n{"*&*" * 12} \n\n')
-        
-        # TOP-1 PREDICTIONS
-        top_k_preds = torch.topk(total_top1_word_preds, num_top_words)
-        top_k_ixs_vals = [row for row in zip([vocabulary.itos[i.item()] for i in top_k_preds.indices], [v.item() for v in top_k_preds.values])]
-        top_k_string = '\n'.join([i[0] + (' ' * (40 - len(i[0]))) + str(i[1]) for i in top_k_ixs_vals])
-        print(f'\n\n{"*&*" * 12} \n\t{num_top_words} top-1 predicted words: \n{top_k_string} \n{"*&*" * 12} \n\n')
-
-        accuracy = total_correct_preds / total_num_words
-        if phase == 'val':
-            print(f'{phase} accuracy: {accuracy} \t ({total_correct_preds}/{total_num_words} correctly predicted)')
     return (epoch_loss / i), accuracy
 
 

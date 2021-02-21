@@ -55,6 +55,7 @@ from utils.funcs import print_parameters, dir_validation, memory_stats
 
 from utils.text_utils import ixs_to_words
 
+# @DEBUG:
 from config import parameters
 
 
@@ -88,22 +89,54 @@ if __name__ == '__main__':
     ##
     # CONSTRUCT VOCABULARY
     vocabulary = build_vocabulary(parameters['counts_file'], parameters['vocabulary_indices'], min_freq=parameters['vocab_cutoff'])
-    # print(f'Vocabulary contains {len(vocabulary)} distinct tokens, constructed with a frequency cutoff of {parameters["vocab_cutoff"]} and counts file at {parameters["counts_file"]}')
+    print(f'Vocabulary contains {len(vocabulary)} distinct tokens, constructed with a frequency cutoff of {parameters["vocab_cutoff"]} and counts file at {parameters["counts_file"]}')
     
     input_dim = len(vocabulary)
     
     mem_check(DEVICE, legend='After vocabulary') # MEMORY DEBUGGING!!!
+
+    ## ONLY NUMERICALISE THE DATA RIGHT IF NO EXISTING FILE IS FOUND
+    if not os.path.exists(parameters['num_dataset']):
+        print(f'No numericalised file found at {parameters["num_dataset"]}, creating numericalised file from dataset at {parameters["dataset_path"]}')
+        numericalise_dataset(parameters['dataset_path'], parameters['num_dataset'], vocabulary)
+    else:
+        print(f'Numericalised file found at {parameters["num_dataset"]}')
+    
     
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ## LOAD AND SPLIT DATASET
     # 'SAMPLE_bnc_full_seqlist_deptree_numeric_voc-1.json'
-    train_data, val_data, test_data = construct_dataset_splits(parameters['tensor_dataset'], split_ratios=parameters['split_ratios'])
+    train_data, test_data, val_data = construct_dataset_splits(parameters['num_dataset'], vocabulary, split_ratios=parameters['split_ratios'])
     
-    print('\nFirst example train seq:', train_data[0]['seq'])
-    print('\nFirst example train tree:', train_data[0]['tree'])
+    print('\nFirst example train seq:', train_data.examples[0].seq)
+    print('\nFirst example train tree:', train_data.examples[0].tree)
     
     mem_check(DEVICE, legend='After splits') # MEMORY DEBUGGING!!!
+
     
+    ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    ## BUILD DATA BATCHES
+    train_iter, val_iter = BucketIterator.splits(
+        (train_data, val_data),
+        batch_sizes=(parameters['batch_size'], parameters['batch_size']),
+        # device=parameters['device'],
+        device=DEVICE,
+        # sort=parameters['sort_train_val_data'],
+        # sort_key=lambda x: len(x.seq),
+        # sort_within_batch=True,
+        shuffle=parameters['shuffle_train_val_data'],
+        repeat=parameters['repeat_train_val_iter']
+    )
+
+    test_iter = Iterator(
+        test_data,
+        batch_size=parameters['batch_size'],
+        # device=parameters['device'],
+        device=DEVICE,
+        repeat=parameters['repeat_train_val_iter']
+    )
+    
+
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ## MODEL AND TRAINING INITIALISATION
     encoder = TreeLSTM(input_dim, parameters['embedding_dim'], parameters['word_emb_dim'])
@@ -152,20 +185,19 @@ if __name__ == '__main__':
         
         epoch_start_time = time.time()
 
-        print(f'\n Epoch {epoch} training... \n')
-        epoch_loss, epoch_accuracy = run_model(
-            train_data, 
-            model, 
-            optimizer, 
-            criterion, 
-            vocabulary, 
-            device=DEVICE, 
-            phase='train', 
-            max_seq_len=parameters['max_seq_len'],
-            teacher_forcing_ratio=parameters['teacher_forcing_ratio'],
-            tensor_data=parameters['use_tensor_data'])
-        losses.append(epoch_loss)
-        accuracies.append(epoch_accuracy)
+        # print(f'\n Epoch {epoch} training... \n')
+        # epoch_loss, epoch_accuracy = run_model(
+        #     train_iter, 
+        #     model, 
+        #     optimizer, 
+        #     criterion, 
+        #     vocabulary, 
+        #     device=DEVICE, 
+        #     phase='train', 
+        #     max_seq_len=parameters['max_seq_len'],
+        #     teacher_forcing_ratio=parameters['teacher_forcing_ratio'])
+        # losses.append(epoch_loss)
+        # accuracies.append(epoch_accuracy)
 
         # mem_check(DEVICE, legend='Post-epoch, pre saving checkpoint') # MEMORY DEBUGGING!!!
         # get_gpu_status() # MEMORY DEBUGGING!!!
@@ -185,7 +217,7 @@ if __name__ == '__main__':
         
         print(f'\n Epoch {epoch} validation... \n')
         val_epoch_loss, val_epoch_accuracy = run_model(
-            val_data,
+            val_iter,
             model,
             optimizer,
             criterion,
@@ -193,12 +225,11 @@ if __name__ == '__main__':
             device=DEVICE,
             phase='val',
             max_seq_len=parameters['max_seq_len'],
-            teacher_forcing_ratio=parameters['teacher_forcing_ratio'],
-            tensor_data=parameters['use_tensor_data'])
+            teacher_forcing_ratio=parameters['teacher_forcing_ratio'])
         val_losses.append(val_epoch_loss)
         val_accuracies.append(val_epoch_accuracy)
 
-        mem_check(DEVICE, legend='Post validation') # MEMORY DEBUGGING!!!
+        # mem_check(DEVICE, legend='Post validation') # MEMORY DEBUGGING!!!
 
         elapsed_time = time.time() - epoch_start_time
         print(f'Elapsed time in epoch {epoch}: {elapsed_time}' )
