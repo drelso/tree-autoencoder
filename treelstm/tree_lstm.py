@@ -9,6 +9,34 @@ See Tai et al. 2015 https://arxiv.org/abs/1503.00075 for model description.
 import torch
 
 
+### MEMORY DEBUGGING
+import os
+import psutil
+
+def mem_diff(prev_mem, legend=0, print_mem=False):
+    current_mem = get_current_mem()
+    mem_change = current_mem - prev_mem
+    if mem_change and print_mem:
+        print(f'\n\n CPU memory difference {legend}: \t\t {mem_change}MB \n')
+    return current_mem, mem_change
+
+def get_current_mem():
+    """
+    Get memory usage in MB for current process
+
+    Returns
+    -------
+    float
+        MBs of memory used by current process
+    """
+    conversion_rate = 2**20 # CONVERT TO MB
+    pid = os.getpid()
+    proc = psutil.Process(pid)
+    # mem_gb = "{:.2f}".format(proc.memory_info()[0] / conversion_rate)
+    return proc.memory_info()[0] / conversion_rate
+### / MEMORY DEBUGGING
+
+
 class TreeLSTM(torch.nn.Module):
     '''PyTorch TreeLSTM model that implements efficient batching.
     '''
@@ -42,7 +70,7 @@ class TreeLSTM(torch.nn.Module):
         # print(f'W_f size {self.word_emb_dim}x{self.out_features}')
         # print(f'U_f size {self.out_features}x{self.out_features}')
 
-    def forward(self, features, node_order, adjacency_list, edge_order):
+    def forward(self, mem_changes, features, node_order, adjacency_list, edge_order):
         '''Run TreeLSTM model on a tree data structure with node features
 
         Takes Tensors encoding node features, a tree node adjacency_list, and the order in which 
@@ -54,14 +82,20 @@ class TreeLSTM(torch.nn.Module):
 
         # Retrive device the model is currently loaded on to generate h, c, and h_sum result buffers
         device = next(self.parameters()).device
+        
+        last_mem, mem_change  = mem_diff(get_current_mem(), legend="**IN ENCODER** before h and c (#4.3.1)", print_mem=False) # MEM DEBUGGING!!!
+        if mem_change: mem_changes['bf_hc_431'].append(mem_change)
 
         # h and c states for every node in the batch
         h = torch.zeros(batch_size, self.out_features, device=device)
         c = torch.zeros(batch_size, self.out_features, device=device)
 
+        last_mem, mem_change  = mem_diff(last_mem, legend="**IN ENCODER** after h and c (#4.3.2)", print_mem=False) # MEM DEBUGGING!!!
+        if mem_change: mem_changes['af_hc_432'].append(mem_change)
+
         # populate the h and c states respecting computation order
         for n in range(node_order.max() + 1):
-            self._run_lstm(n, h, c, features, node_order, adjacency_list, edge_order)
+            self._run_lstm(mem_changes, n, h, c, features, node_order, adjacency_list, edge_order)
         
         # print('TreeLSTM batch size', batch_size)
         # print('TreeLSTM h size', h.shape)
@@ -69,7 +103,7 @@ class TreeLSTM(torch.nn.Module):
 
         return h, c
 
-    def _run_lstm(self, iteration, h, c, features, node_order, adjacency_list, edge_order):
+    def _run_lstm(self, mem_changes, iteration, h, c, features, node_order, adjacency_list, edge_order):
         '''Helper function to evaluate all tree nodes currently able to be evaluated.
         '''
         # N is the number of nodes in the tree
@@ -114,6 +148,9 @@ class TreeLSTM(torch.nn.Module):
         x = self.word_embedding(features[node_mask])
         # print(f'######## x: \t {x}')
 
+        last_mem, mem_change  = mem_diff(get_current_mem(), legend="**IN TREELSTM** after word embeddings (#4.3.2.1)", print_mem=False) # MEM DEBUGGING!!!
+        if mem_change: mem_changes['w_embs_4321'].append(mem_change)
+
         # print(f'iteration: {iteration} \n \t node mask: {node_mask} \t x: {x}')
         # print(f'x length {x.size()}')
 
@@ -155,11 +192,17 @@ class TreeLSTM(torch.nn.Module):
             h_sum = torch.stack(parent_list)
             iou = self.W_iou(x) + self.U_iou(h_sum)
 
+        last_mem, mem_change  = mem_diff(last_mem, legend="**IN TREELSTM** adj lists (#4.3.2.2)", print_mem=False) # MEM DEBUGGING!!!
+        if mem_change: mem_changes['adj_lists_4322'].append(mem_change)
+
         # i, o and u are tensors of size n x M
         i, o, u = torch.split(iou, iou.size(1) // 3, dim=1)
         i = torch.sigmoid(i)
         o = torch.sigmoid(o)
         u = torch.tanh(u)
+
+        last_mem, mem_change  = mem_diff(last_mem, legend="**IN TREELSTM** IOU (#4.3.2.3)", print_mem=False) # MEM DEBUGGING!!!
+        if mem_change: mem_changes['iou_4323'].append(mem_change)
 
         # At iteration 0 none of the nodes should have children
         # Otherwise, calculate the forget states for each parent node and child node
@@ -190,6 +233,9 @@ class TreeLSTM(torch.nn.Module):
             f = self.W_f(x_parents) + self.U_f(child_h)
             f = torch.sigmoid(f)
 
+            last_mem, mem_change  = mem_diff(last_mem, legend="**IN TREELSTM** after F (#4.3.2.4)", print_mem=False) # MEM DEBUGGING!!!
+            if mem_change: mem_changes['after_f_4324'].append(mem_change)
+
             # fc is a tensor of size e x M
             fc = f * child_c
 
@@ -197,8 +243,14 @@ class TreeLSTM(torch.nn.Module):
             parent_children = torch.split(fc, child_counts)
             parent_list = [item.sum(0) for item in parent_children]
 
+            last_mem, mem_change  = mem_diff(last_mem, legend="**IN TREELSTM** after parents (#4.3.2.5)", print_mem=False) # MEM DEBUGGING!!!
+            if mem_change: mem_changes['after_parents_4325'].append(mem_change)
+
             c_sum = torch.stack(parent_list)
             c[node_mask, :] = i * u + c_sum
+        
+        last_mem, mem_change  = mem_diff(last_mem, legend="**IN TREELSTM** after C (#4.3.2.6)", print_mem=False) # MEM DEBUGGING!!!
+        if mem_change: mem_changes['after_c_4326'].append(mem_change)
 
         h[node_mask, :] = o * torch.tanh(c[node_mask])
 

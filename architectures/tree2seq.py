@@ -10,6 +10,37 @@ import random
 
 # from .utils.tree_utils import ix_to_word
 
+
+
+### MEMORY DEBUGGING
+import os
+import psutil
+
+def mem_diff(prev_mem, legend=0, print_mem=False):
+    current_mem = get_current_mem()
+    mem_change = current_mem - prev_mem
+    if mem_change and print_mem:
+        print(f'\n\n CPU memory difference {legend}: \t\t {mem_change}MB \n')
+    return current_mem, mem_change
+
+def get_current_mem():
+    """
+    Get memory usage in MB for current process
+
+    Returns
+    -------
+    float
+        MBs of memory used by current process
+    """
+    conversion_rate = 2**20 # CONVERT TO MB
+    pid = os.getpid()
+    proc = psutil.Process(pid)
+    # mem_gb = "{:.2f}".format(proc.memory_info()[0] / conversion_rate)
+    return proc.memory_info()[0] / conversion_rate
+### / MEMORY DEBUGGING
+
+
+
 class Tree2Seq(nn.Module):
     def __init__(self, encoder, decoder, device, vocabulary):
         super().__init__()
@@ -22,11 +53,14 @@ class Tree2Seq(nn.Module):
         # torchtext.vocab object
         self.vocabulary = vocabulary
         
-    def forward(self, src_tree, trg, teacher_forcing_ratio = 0.5, phase='train', print_preds=False):
+    def forward(self, mem_changes, src_tree, trg, teacher_forcing_ratio = 0.5, phase='train', print_preds=False):
         #src = [src len, batch size]
         #trg = [trg len, batch size]
         #teacher_forcing_ratio is probability to use teacher forcing
         #e.g. if teacher_forcing_ratio is 0.75 we use ground-truth inputs 75% of the time
+        
+        last_mem, mem_change  = mem_diff(get_current_mem(), legend="**IN MODEL** fwd start (#4.1)", print_mem=print_preds) # MEM DEBUGGING!!!
+        if mem_change: mem_changes['fwd_start_41'].append(mem_change)
         
         batch_size = trg.shape[1]
         trg_len = trg.shape[0]
@@ -37,14 +71,21 @@ class Tree2Seq(nn.Module):
         # print(f'trg_vocab_size { trg_vocab_size}')
         # print(f'features_size: { src_tree["features"].size()}')
         
+        last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** var create (#4.2)", print_mem=print_preds) # MEM DEBUGGING!!!
+        if mem_change: mem_changes['var_create_42'].append(mem_change)
+
         #tensor to store decoder outputs
         outputs = torch.zeros(trg_len, batch_size, trg_vocab_size).to(self.device)
 
         # print('############## TYPES ##############')
         # print('features type', src_tree['features'].type())
+        
+        last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** outputs create (#4.3)", print_mem=print_preds) # MEM DEBUGGING!!!
+        if mem_change: mem_changes['outputs_create_43'].append(mem_change)
 
         #last hidden state of the encoder is used as the initial hidden state of the decoder
         enc_hidden, enc_cell = self.encoder(
+            mem_changes,
             src_tree['features'],
             src_tree['node_order'],
             src_tree['adjacency_list'],
@@ -53,6 +94,9 @@ class Tree2Seq(nn.Module):
         #first input to the decoder is the <sos> tokens
         input = trg[0,:]
         
+        last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** after encoder (#4.4)", print_mem=print_preds) # MEM DEBUGGING!!!
+        if mem_change: mem_changes['after_encoder_44'].append(mem_change)
+
         # print(f'enc_hidden size: {enc_hidden.size()}') # [features_size x hid_dim]
         # print(f'enc_cell size: {enc_cell.size()}')
 
@@ -74,6 +118,9 @@ class Tree2Seq(nn.Module):
         # print(f'dec_cell size: {dec_cell.size()}')
 
         NUM_CORRECT_PREDS = 0
+        
+        last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** get hidden states (#4.5)", print_mem=print_preds) # MEM DEBUGGING!!!
+        if mem_change: mem_changes['hidden_states_45'].append(mem_change)
 
         for t in range(1, trg_len):
             
@@ -107,6 +154,9 @@ class Tree2Seq(nn.Module):
             #if teacher forcing, use actual next token as next input
             #if not, use predicted token
             input = trg[t] if teacher_force else top1
+        
+        last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** after decoding (#4.6)", print_mem=print_preds) # MEM DEBUGGING!!!
+        if mem_change: mem_changes['after_decoding_46'].append(mem_change)
 
         if print_preds:
             print('End of predictions', flush=True)

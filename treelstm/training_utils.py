@@ -23,6 +23,7 @@ from .tree_utils import convert_tree_to_tensors
 from .util import batch_tree_input
 
 import tracemalloc # MEMORY DEBUG
+import gc # MEMORY DEBUG
 
 ## HACKISH: INITIALISE THE DEFAULT DEVICE ACCORDING TO
 ## WHETHER GPU FOUND OR NOT. NECESSARY TO PASS THE RIGHT
@@ -383,19 +384,49 @@ def mem_check(device, legend=0):
     print(f' +++++++++++ CPU used: {mem_gb}GB \t {mem_percent}%', flush=True)
 
 
-def mem_diff(prev_mem, legend=0):
+def mem_diff(prev_mem, legend=0, print_mem=False):
     current_mem = get_current_mem()
-    mem_diff = current_mem - prev_mem
-    if mem_diff:
-        print(f'\n\n CPU memory difference {legend}: \t\t {mem_diff}MB \n')
-    return current_mem
+    mem_change = current_mem - prev_mem
+    if mem_change and print_mem:
+        print(f'\n\n CPU memory difference {legend}: \t\t {mem_change}MB \n')
+    return current_mem, mem_change
 
 def get_current_mem():
+    """
+    Get memory usage in MB for current process
+
+    Returns
+    -------
+    float
+        MBs of memory used by current process
+    """
     conversion_rate = 2**20 # CONVERT TO MB
     pid = os.getpid()
     proc = psutil.Process(pid)
     # mem_gb = "{:.2f}".format(proc.memory_info()[0] / conversion_rate)
     return proc.memory_info()[0] / conversion_rate
+
+def get_tensor_memory(tensor):
+    """
+    Get size of tensor in memory in MBs
+
+    Requirements
+    ------------
+    import sys
+
+    Parameters
+    ----------
+    tensor : torch.tensor
+        PyTorch tensor to get size of
+    
+    Returns
+    -------
+    float
+        size of tensor in MBs
+    """
+    conversion_rate = 2**20 # CONVERT TO MB
+    return sys.getsizeof(tensor.storage()) / conversion_rate
+
 
 
 def local_var_sizes(vars_dict):
@@ -491,7 +522,6 @@ def run_model_batches(data_iter, model, optimizer, criterion, vocabulary, device
     # TODO: REMOVE 'numericalize()' FUNCTION TO USE 
     #       ITERATORS DIRECTLY
     data_batches = torchtext.data.batch(data_iter.data(), data_iter.batch_size, data_iter.batch_size_fn)
-
     
     mem_check(device, legend='Torchtext data batches') # MEMORY DEBUGGING!!!
 
@@ -536,10 +566,6 @@ def run_model_batches(data_iter, model, optimizer, criterion, vocabulary, device
                 batch_last_mem = batch_start_mem
 
                 mem_check(device, legend=str(i) + ' samples (START)') # MEM DEBUGGING
-                # print(f'Model size: {sizeof_fmt(sys.getsizeof(model))}') # MEM DEBUGGING
-                # print(f'optimizer size: {sizeof_fmt(sys.getsizeof(optimizer))}') # MEM DEBUGGING
-                # print(f'criterion size: {sizeof_fmt(sys.getsizeof(criterion))}') # MEM DEBUGGING
-                # print(f'vocabulary size: {sizeof_fmt(sys.getsizeof(vocabulary))}') # MEM DEBUGGING
 
                 #print(f'\t model size: {sys.getsizeof(model)} \n\t optimizer size: {sys.getsizeof(optimizer)} \n\t batches_skipped_lengths size: {sys.getsizeof(batches_skipped_lengths)} \n\t data_batches size: {sys.getsizeof(data_batches)} \n\t total_word_preds size: {sys.getsizeof(total_word_preds)} \n\t total_word_preds size: {sys.getsizeof(total_word_preds)} ', flush=True)
                 # print(f'total_word_preds.size() = {total_word_preds.size()}')
@@ -771,11 +797,11 @@ def run_model(dataset, model, optimizer, criterion, vocabulary, device=torch.dev
         model.train()
         optimizer.zero_grad()
         grad_ctx_manager = dummy_context_mgr()
-        break_after_num = 1000
+        break_after_num = 10000
     else:
         model.eval()
         grad_ctx_manager = torch.no_grad()
-        break_after_num = 100
+        break_after_num = 1000
     
     epoch_loss = 0.0
     vocab_size = len(vocabulary) # ALSO input_dim
@@ -796,29 +822,66 @@ def run_model(dataset, model, optimizer, criterion, vocabulary, device=torch.dev
     with grad_ctx_manager:
         start_mem = get_current_mem() # MEM DEBUGGING!!!
 
+        # MEM DEBUG VARS
+        mem_changes = {
+            'start_mem_1' : [],
+            'bf_dpoint_2' : [],
+            'af_dpoint_3' : [],
+            'max_len_4' : [],
+            'fwd_start_41' : [],
+            'var_create_42' : [],
+            'outputs_create_43' : [],
+            'bf_hc_431' : [],
+            'af_hc_432' : [],
+            'w_embs_4321' : [],
+            'adj_lists_4322' : [],
+            'iou_4323' : [],
+            'after_f_4324' : [],
+            'after_parents_4325' : [],
+            'after_c_4326' : [],
+            'after_encoder_44' : [],
+            'hidden_states_45' : [],
+            'after_decoding_46' : [],
+            'af_model_5' : [],
+            'out_reshp_6' : [],
+            'loss_7' : [],
+            'bckwrd_8' : [],
+            'end_9' : []
+        }
+
         fwd_times = []
         post_times = []
         times = []
 
         for i, sample in enumerate(dataset):
             sample_start_time = time.time()
+            print_preds = not i % math.ceil(len(dataset) / 500) # or batch_num > len(data_iter) - 1
+
+            last_mem, mem_change = mem_diff(start_mem, legend="from start_mem (cumulative) (#1)", print_mem=print_preds) # MEM DEBUGGING!!!
+            if mem_change: mem_changes['start_mem_1'].append(mem_change)
+            
             if phase == 'train':
                 optimizer.zero_grad()
             
-            print_preds = not i % math.ceil(len(dataset) / 500) # or batch_num > len(data_iter) - 1
-
             if print_preds:
                 elapsed_time = time.time() - start_time
-                print(f'{"=" * 20} \n\t Elapsed time after {i} samples: {elapsed_time} \n{"=" * 20} \n', flush=True)
-                last_mem = mem_diff(start_mem, legend="from start_mem (cumulative) (#1)") # MEM DEBUGGING!!!
-
+                print(f'{"=" * 80} \n\t Elapsed time after {i} samples: {elapsed_time} \n{"=" * 80} \n', flush=True)
+            
                 mem_check(device, legend=str(i) + ' samples (START)') # MEM DEBUGGING
                 
                 if times:
                     print(f'\n\nAverage full sample times: {np.average(times)}')
                     print(f'Average forward times: {np.average(fwd_times)}')
                     print(f'Average post times: {np.average(post_times)}')
+                
+                print(f'\n{"-" * 80}\n\t\tMEMORY CHANGES\n{"-" * 80}')
+                for name, mem_list in mem_changes.items():
+                    print(f'\t{name}: {" " * (30 - len(name))} Avg: {np.average(mem_list)} \tNum_incs: {len(mem_list)}')
             
+            
+            last_mem, mem_change  = mem_diff(last_mem, legend="before datapoint construction (#2)", print_mem=print_preds) # MEM DEBUGGING!!!
+            if mem_change: mem_changes['bf_dpoint_2'].append(mem_change)
+
             if tensor_data:
                 # Data previously processed and stored as (CUDA) tensors
                 input_tree = sample['tree']
@@ -832,16 +895,18 @@ def run_model(dataset, model, optimizer, criterion, vocabulary, device=torch.dev
                 seq_len = len(sample['seq'])
                 target_seq = torch.tensor(proc_seq, device=device, dtype=torch.long).unsqueeze(0).transpose(0, 1)
 
-            if print_preds: last_mem = mem_diff(last_mem, legend="after datapoint construction (#2)") # MEM DEBUGGING!!!
-            
+            last_mem, mem_change  = mem_diff(last_mem, legend="after datapoint construction (#3)", print_mem=print_preds) # MEM DEBUGGING!!!
+            if mem_change: mem_changes['af_dpoint_3'].append(mem_change)
+
             if seq_len > max_seq_len or seq_len < 2:
                 # Skip batch if sequence length is larger than allowed
                 # or contains a single token
                 skipped_lengths.append(seq_len)
                 continue
 
-            if print_preds: last_mem = mem_diff(last_mem, legend="after max_seq_len (#3)") # MEM DEBUGGING!!!
-
+            last_mem, mem_change  = mem_diff(last_mem, legend="after max_seq_len (#4)", print_mem=print_preds) # MEM DEBUGGING!!!
+            if mem_change: mem_changes['max_len_4'].append(mem_change)
+            
             # if there is more than one element in the batch input
             # process the batch with the treelstm.util.batch_tree_input
             # utility function, else return the single element
@@ -856,14 +921,10 @@ def run_model(dataset, model, optimizer, criterion, vocabulary, device=torch.dev
 
             # batch_target_tensor = torch.tensor(batch_target, device=device, dtype=torch.long).transpose(0, 1)
             
-            if print_epoch and print_preds and phase == 'train':
-                elapsed_time = time.time() - start_time
-                print(f'\nElapsed time after {i} samples: {elapsed_time}', flush=True)
-                last_mem = mem_diff(last_mem, legend="after batch_target_tensor (#5))") # MEM DEBUGGING!!!
-                
             fwd_start_time = time.time()
             # num_correct_preds IS ONLY CALCULATED IN VALIDATION PHASE, IN TRAINING IT WILL ALWAYS EQUAL 0
             output, enc_hidden, dec_hidden, num_correct_preds = model(
+                            mem_changes,
                             input_tree, 
                             target_seq, 
                             teacher_forcing_ratio=teacher_forcing_ratio,
@@ -873,9 +934,8 @@ def run_model(dataset, model, optimizer, criterion, vocabulary, device=torch.dev
             total_num_words += seq_len
             total_correct_preds += num_correct_preds
             
-            if print_preds:
-                # mem_check(device, legend=str(i) + ' samples (AFTER FORWARD)') # MEM DEBUGGING
-                last_mem = mem_diff(last_mem, legend="after model() (#7))") # MEM DEBUGGING!!!
+            last_mem, mem_change  = mem_diff(last_mem, legend="after model() (#5))", print_mem=print_preds) # MEM DEBUGGING!!!
+            if mem_change: mem_changes['af_model_5'].append(mem_change)
             
             fwd_times.append(time.time() - fwd_start_time)  # TIMING DEBUG!!!
 
@@ -886,15 +946,13 @@ def run_model(dataset, model, optimizer, criterion, vocabulary, device=torch.dev
             # "we slice off the first column of the output
             # and target tensors (<sos>)"
             # print(f'\n\n ^^^^^^^^^^^^ \t PRE output.size() {output.size()}')
-            # TODO: SLICE OFF ALL <sos> TOKENS IN BATCH
-            # (REMOVE IXS RELATED TO batch_input['tree_sizes'])
-            
             output = output.view(-1, vocab_size)[1:]#.view(-1)#, output_dim)
             target_seq = target_seq.view(-1)[1:]
             
-            if print_preds: last_mem = mem_diff(last_mem, legend="after batch_target_tensor reshape (#8)") # MEM DEBUGGING!!!
-
-            post_times.append(time.time() - sample_start_time)  # TIMING DEBUG!!!
+            last_mem, mem_change  = mem_diff(last_mem, legend="after output reshape (#6)", print_mem=print_preds) # MEM DEBUGGING!!!
+            if mem_change: mem_changes['out_reshp_6'].append(mem_change)
+            
+            post_times.append(time.time() - sample_start_time) # TIMING DEBUG!!!
 
             # SUM ALL PREDICTIONS PER WORD
             total_word_preds += output.sum(dim=0)
@@ -903,8 +961,9 @@ def run_model(dataset, model, optimizer, criterion, vocabulary, device=torch.dev
             
             loss = criterion(output, target_seq)
             
-            if print_preds: last_mem = mem_diff(last_mem, legend="after loss (#9)") # MEM DEBUGGING!!!
-
+            last_mem, mem_change  = mem_diff(last_mem, legend="after loss (#7)", print_mem=print_preds) # MEM DEBUGGING!!!
+            if mem_change: mem_changes['loss_7'].append(mem_change)
+            
             if phase == 'train':
                 loss.backward()
                 optimizer.step()
@@ -914,27 +973,32 @@ def run_model(dataset, model, optimizer, criterion, vocabulary, device=torch.dev
                 # WHICH MAKES BPTT TRACK ONLY THE CURRENT BATCH
                 # INSTEAD OF THE FULL DATASET HISTORY
                 # (FROM https://discuss.pytorch.org/t/solved-why-we-need-to-detach-variable-which-contains-hidden-representation/1426/3)
-                # enc_hidden = repackage_hidden(enc_hidden)
-                # dec_hidden = repackage_hidden(dec_hidden)
+                enc_hidden = repackage_hidden(enc_hidden)
+                dec_hidden = repackage_hidden(dec_hidden)
             
             times.append(time.time() - sample_start_time) # TIMING DEBUG!!!
             
-            if print_preds: last_mem = mem_diff(last_mem, legend="after backward (#10)") # MEM DEBUGGING!!!
-
+            last_mem, mem_change = mem_diff(last_mem, legend="after backward (#8)", print_mem=print_preds) # MEM DEBUGGING!!!
+            if mem_change: mem_changes['bckwrd_8'].append(mem_change)
+            
             epoch_loss += loss.detach().item()
             
             if print_preds:
                 # mem_check(device, legend=str(i) + ' samples (END)') # MEM DEBUGGING
-                mem_diff(last_mem, legend="(batch end) full diff (#11)") # MEM DEBUGGING!!!
                 # snapshot = tracemalloc.take_snapshot()
                 # print(f'\n\n{"@"*60}\n{"@"*60}\n \t\tMEMORY ALLOCATION SNAPSHOT \n{"@"*60}\n{"@"*60}\n')
                 # for stat in snapshot.statistics("lineno"):
                 #     print(stat)
-                #if i > break_after_num: break # @DEBUGGING
+                if i > break_after_num: exit()#break # @DEBUGGING
             
+            gc.collect() # MEM DEBUGGING!!!
 
+            last_mem, mem_change = mem_diff(last_mem, legend="(batch end) full diff (#9)", print_mem=print_preds) # MEM DEBUGGING!!!
+            if mem_change: mem_changes['end_9'].append(mem_change)
+            
+        
         mem_check(device, legend='Finished processing batches') # MEM DEBUGGING
-        print(f'Skipped {len(skipped_lengths)} batches with lengths: {skipped_lengths}', flush=True)
+        print(f'Skipped {len(skipped_lengths)} samples with lengths: {skipped_lengths}', flush=True)
 
         # ADD UP ALL INDIVIDUAL PREDICTIONS FOR WORDS AND PRINT
         # THE TOP-K MOST PREDICTED WORDS, THIS HELPS KEEP TRACK

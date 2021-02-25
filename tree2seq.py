@@ -148,7 +148,7 @@ if __name__ == '__main__':
     mem_check(DEVICE, legend='After batches') # MEMORY DEBUGGING!!!
 
     for epoch in range(parameters['num_epochs']):
-        print(f'\n\n &&&&&&&&&&&&& \n ############# \n \t\t\t EPOCH ======> {epoch} \n &&&&&&&&&&&&& \n ############# \n\n')
+        print(f'\n\n {"&" * 80} \n {"#" * 80} \n \t\t\t EPOCH ======> {epoch} \n {"#" * 80} \n {"&" * 80} \n\n')
         
         epoch_start_time = time.time()
 
