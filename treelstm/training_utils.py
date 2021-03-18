@@ -24,7 +24,7 @@ from .util import batch_tree_input
 
 import tracemalloc # MEMORY DEBUG
 import gc # MEMORY DEBUG
-from pympler import muppy, summary, tracker
+# from pympler import muppy, summary, tracker
 
 ## HACKISH: INITIALISE THE DEFAULT DEVICE ACCORDING TO
 ## WHETHER GPU FOUND OR NOT. NECESSARY TO PASS THE RIGHT
@@ -880,7 +880,7 @@ def run_model(dataset, model, optimizer, criterion, vocabulary, device=torch.dev
 
         for i, sample in enumerate(dataset):
             sample_start_time = time.time()
-            print_preds = True # not i % math.ceil(len(dataset) / 500) # or batch_num > len(data_iter) - 1
+            print_preds = not i % math.ceil(len(dataset) / 300) # or batch_num > len(data_iter) - 1
 
             last_mem, mem_change = mem_diff(start_mem, legend="from start_mem (cumulative) (#1)", print_mem=print_preds) # MEM DEBUGGING!!!
             if mem_change: mem_changes['start_mem_1'].append(mem_change)

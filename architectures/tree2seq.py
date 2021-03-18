@@ -152,10 +152,10 @@ class Tree2Seq(nn.Module):
             # last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** top1 (#4.5.4)", print_mem=print_preds) # MEM DEBUGGING!!!
             # if mem_change: mem_changes['top1_454'].append(mem_change)
 
-            # if phase == 'val':
-            pred_word = self.vocabulary.itos[top1[0].item()]
-            target_word = self.vocabulary.itos[trg[t][0].item()]
-            if pred_word == target_word: NUM_CORRECT_PREDS += 1
+            if phase == 'val':
+                pred_word = self.vocabulary.itos[top1[0].item()]
+                target_word = self.vocabulary.itos[trg[t][0].item()]
+                if pred_word == target_word: NUM_CORRECT_PREDS += 1
             
             # last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** preds (#4.5.5)", print_mem=print_preds) # MEM DEBUGGING!!!
             # if mem_change: mem_changes['preds_455'].append(mem_change)
