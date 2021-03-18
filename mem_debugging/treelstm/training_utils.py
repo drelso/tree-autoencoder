@@ -903,15 +903,15 @@ def run_model(dataset, model, optimizer, criterion, vocabulary, device=torch.dev
                 for name, mem_list in mem_changes.items():
                     if len(mem_list):
                         mem_avg = np.average(mem_list)
-                        # if len(mem_list) > 6:
-                        #     mem_max = np.partition(mem_list, 6)[-6:]
-                        # else:
-                        #     mem_max = mem_list
-                        print(f'\t{name}: {" " * (20 - len(name))} Avg: {mem_avg} {" " * (20 - len(str(mem_avg)))} Num_incs: {len(mem_list)}') # {" " * (10 - len(str(len(mem_list))))} Mem Max: {mem_max}')
+                        if len(mem_list) > 6:
+                            mem_max = np.partition(mem_list, 6)[-6:]
+                        else:
+                            mem_max = mem_list
+                        print(f'\t{name}: {" " * (20 - len(name))} Avg: {mem_avg} {" " * (20 - len(str(mem_avg)))} Num_incs: {len(mem_list)} {" " * (10 - len(str(len(mem_list))))} Mem Max: {mem_max}')
             
             
-            # last_mem, mem_change  = mem_diff(last_mem, legend="before datapoint construction (#2)", print_mem=print_preds) # MEM DEBUGGING!!!
-            # if mem_change: mem_changes['bf_dpoint_2'].append(mem_change)
+            last_mem, mem_change  = mem_diff(last_mem, legend="before datapoint construction (#2)", print_mem=print_preds) # MEM DEBUGGING!!!
+            if mem_change: mem_changes['bf_dpoint_2'].append(mem_change)
 
             if tensor_data:
                 # Data previously processed and stored as (CUDA) tensors
@@ -926,8 +926,8 @@ def run_model(dataset, model, optimizer, criterion, vocabulary, device=torch.dev
                 seq_len = len(sample['seq'])
                 target_seq = torch.tensor(proc_seq, device=device, dtype=torch.long).unsqueeze(0).transpose(0, 1)
 
-            # last_mem, mem_change  = mem_diff(last_mem, legend="after datapoint construction (#3)", print_mem=print_preds) # MEM DEBUGGING!!!
-            # if mem_change: mem_changes['af_dpoint_3'].append(mem_change)
+            last_mem, mem_change  = mem_diff(last_mem, legend="after datapoint construction (#3)", print_mem=print_preds) # MEM DEBUGGING!!!
+            if mem_change: mem_changes['af_dpoint_3'].append(mem_change)
 
             if seq_len > max_seq_len or seq_len < 2:
                 # Skip batch if sequence length is larger than allowed
@@ -935,8 +935,8 @@ def run_model(dataset, model, optimizer, criterion, vocabulary, device=torch.dev
                 skipped_lengths.append(seq_len)
                 continue
 
-            # last_mem, mem_change  = mem_diff(last_mem, legend="after max_seq_len (#4)", print_mem=print_preds) # MEM DEBUGGING!!!
-            # if mem_change: mem_changes['max_len_4'].append(mem_change)
+            last_mem, mem_change  = mem_diff(last_mem, legend="after max_seq_len (#4)", print_mem=print_preds) # MEM DEBUGGING!!!
+            if mem_change: mem_changes['max_len_4'].append(mem_change)
             
             # if there is more than one element in the batch input
             # process the batch with the treelstm.util.batch_tree_input
@@ -980,8 +980,8 @@ def run_model(dataset, model, optimizer, criterion, vocabulary, device=torch.dev
             output = output.view(-1, vocab_size)[1:]#.view(-1)#, output_dim)
             target_seq = target_seq.view(-1)[1:]
             
-            # last_mem, mem_change  = mem_diff(last_mem, legend="after output reshape (#6)", print_mem=print_preds) # MEM DEBUGGING!!!
-            # if mem_change: mem_changes['out_reshp_6'].append(mem_change)
+            last_mem, mem_change  = mem_diff(last_mem, legend="after output reshape (#6)", print_mem=print_preds) # MEM DEBUGGING!!!
+            if mem_change: mem_changes['out_reshp_6'].append(mem_change)
             
             post_times.append(time.time() - sample_start_time) # TIMING DEBUG!!!
 
@@ -992,8 +992,8 @@ def run_model(dataset, model, optimizer, criterion, vocabulary, device=torch.dev
             
             loss = criterion(output, target_seq)
             
-            # last_mem, mem_change  = mem_diff(last_mem, legend="after loss (#7)", print_mem=print_preds) # MEM DEBUGGING!!!
-            # if mem_change: mem_changes['loss_7'].append(mem_change)
+            last_mem, mem_change  = mem_diff(last_mem, legend="after loss (#7)", print_mem=print_preds) # MEM DEBUGGING!!!
+            if mem_change: mem_changes['loss_7'].append(mem_change)
             
             if phase == 'train':
                 loss.backward()
@@ -1013,15 +1013,15 @@ def run_model(dataset, model, optimizer, criterion, vocabulary, device=torch.dev
             
             epoch_loss += loss.detach().item()
             
-            # if print_preds:
-            #     # mem_check(device, legend=str(i) + ' samples (END)') # MEM DEBUGGING
-            #     # snapshot = tracemalloc.take_snapshot()
-            #     # print(f'\n\n{"@"*60}\n{"@"*60}\n \t\tMEMORY ALLOCATION SNAPSHOT \n{"@"*60}\n{"@"*60}\n')
-            #     # for stat in snapshot.statistics("lineno"):
-            #     #     print(stat)
-            #     if i > break_after_num: exit()#break # @DEBUGGING
+            if print_preds:
+                # mem_check(device, legend=str(i) + ' samples (END)') # MEM DEBUGGING
+                # snapshot = tracemalloc.take_snapshot()
+                # print(f'\n\n{"@"*60}\n{"@"*60}\n \t\tMEMORY ALLOCATION SNAPSHOT \n{"@"*60}\n{"@"*60}\n')
+                # for stat in snapshot.statistics("lineno"):
+                #     print(stat)
+                if i > break_after_num: exit()#break # @DEBUGGING
             
-            # gc.collect() # MEM DEBUGGING!!!
+            gc.collect() # MEM DEBUGGING!!!
 
             last_mem, mem_change = mem_diff(last_mem, legend="(batch end) full diff (#9)", print_mem=print_preds) # MEM DEBUGGING!!!
             if mem_change: mem_changes['end_9'].append(mem_change)

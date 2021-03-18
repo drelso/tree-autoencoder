@@ -59,8 +59,8 @@ class Tree2Seq(nn.Module):
         #teacher_forcing_ratio is probability to use teacher forcing
         #e.g. if teacher_forcing_ratio is 0.75 we use ground-truth inputs 75% of the time
         
-        # last_mem, mem_change  = mem_diff(get_current_mem(), legend="**IN MODEL** fwd start (#4.1)", print_mem=print_preds) # MEM DEBUGGING!!!
-        # if mem_change: mem_changes['fwd_start_41'].append(mem_change)
+        last_mem, mem_change  = mem_diff(get_current_mem(), legend="**IN MODEL** fwd start (#4.1)", print_mem=print_preds) # MEM DEBUGGING!!!
+        if mem_change: mem_changes['fwd_start_41'].append(mem_change)
         
         batch_size = trg.shape[1]
         trg_len = trg.shape[0]
@@ -71,8 +71,8 @@ class Tree2Seq(nn.Module):
         # print(f'trg_vocab_size { trg_vocab_size}')
         # print(f'features_size: { src_tree["features"].size()}')
         
-        # last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** var create (#4.2)", print_mem=print_preds) # MEM DEBUGGING!!!
-        # if mem_change: mem_changes['var_create_42'].append(mem_change)
+        last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** var create (#4.2)", print_mem=print_preds) # MEM DEBUGGING!!!
+        if mem_change: mem_changes['var_create_42'].append(mem_change)
 
         #tensor to store decoder outputs
         outputs = torch.zeros(trg_len, batch_size, trg_vocab_size).to(self.device)
@@ -80,8 +80,8 @@ class Tree2Seq(nn.Module):
         # print('############## TYPES ##############')
         # print('features type', src_tree['features'].type())
         
-        # last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** outputs create (#4.3)", print_mem=print_preds) # MEM DEBUGGING!!!
-        # if mem_change: mem_changes['outputs_create_43'].append(mem_change)
+        last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** outputs create (#4.3)", print_mem=print_preds) # MEM DEBUGGING!!!
+        if mem_change: mem_changes['outputs_create_43'].append(mem_change)
 
         #last hidden state of the encoder is used as the initial hidden state of the decoder
         enc_hidden, enc_cell = self.encoder(
@@ -94,8 +94,8 @@ class Tree2Seq(nn.Module):
         #first input to the decoder is the <sos> tokens
         input = trg[0,:]
         
-        # last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** after encoder (#4.4)", print_mem=print_preds) # MEM DEBUGGING!!!
-        # if mem_change: mem_changes['after_encoder_44'].append(mem_change)
+        last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** after encoder (#4.4)", print_mem=print_preds) # MEM DEBUGGING!!!
+        if mem_change: mem_changes['after_encoder_44'].append(mem_change)
 
         # print(f'enc_hidden size: {enc_hidden.size()}') # [features_size x hid_dim]
         # print(f'enc_cell size: {enc_cell.size()}')
@@ -119,8 +119,8 @@ class Tree2Seq(nn.Module):
 
         NUM_CORRECT_PREDS = 0
         
-        # last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** get hidden states (#4.5)", print_mem=print_preds) # MEM DEBUGGING!!!
-        # if mem_change: mem_changes['hidden_states_45'].append(mem_change)
+        last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** get hidden states (#4.5)", print_mem=print_preds) # MEM DEBUGGING!!!
+        if mem_change: mem_changes['hidden_states_45'].append(mem_change)
 
         for t in range(1, trg_len):
             
@@ -131,34 +131,34 @@ class Tree2Seq(nn.Module):
             ## MODIFICATION: ONLY DECODE THE FULL TREE EMBEDDING (ROOT)
             output, dec_hidden, dec_cell = self.decoder(input, dec_hidden, dec_cell, mem_changes)
             
-            # last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** decoding (#4.5.1)", print_mem=print_preds) # MEM DEBUGGING!!!
-            # if mem_change: mem_changes['decoding_451'].append(mem_change)
+            last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** decoding (#4.5.1)", print_mem=print_preds) # MEM DEBUGGING!!!
+            if mem_change: mem_changes['decoding_451'].append(mem_change)
 
             #place predictions in a tensor holding predictions for each token
             outputs[t] = output
             
-            # last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** outputs var (#4.5.2)", print_mem=print_preds) # MEM DEBUGGING!!!
-            # if mem_change: mem_changes['outputs_var_452'].append(mem_change)
+            last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** outputs var (#4.5.2)", print_mem=print_preds) # MEM DEBUGGING!!!
+            if mem_change: mem_changes['outputs_var_452'].append(mem_change)
 
             #decide if we are going to use teacher forcing or not
             teacher_force = random.random() < teacher_forcing_ratio
             
-            # last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** teacher frc (#4.5.3)", print_mem=print_preds) # MEM DEBUGGING!!!
-            # if mem_change: mem_changes['tchr_frc_453'].append(mem_change)
+            last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** teacher frc (#4.5.3)", print_mem=print_preds) # MEM DEBUGGING!!!
+            if mem_change: mem_changes['tchr_frc_453'].append(mem_change)
 
             #get the highest predicted token from our predictions
             top1 = output.argmax(1)
             
-            # last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** top1 (#4.5.4)", print_mem=print_preds) # MEM DEBUGGING!!!
-            # if mem_change: mem_changes['top1_454'].append(mem_change)
+            last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** top1 (#4.5.4)", print_mem=print_preds) # MEM DEBUGGING!!!
+            if mem_change: mem_changes['top1_454'].append(mem_change)
 
             # if phase == 'val':
             pred_word = self.vocabulary.itos[top1[0].item()]
             target_word = self.vocabulary.itos[trg[t][0].item()]
             if pred_word == target_word: NUM_CORRECT_PREDS += 1
             
-            # last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** preds (#4.5.5)", print_mem=print_preds) # MEM DEBUGGING!!!
-            # if mem_change: mem_changes['preds_455'].append(mem_change)
+            last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** preds (#4.5.5)", print_mem=print_preds) # MEM DEBUGGING!!!
+            if mem_change: mem_changes['preds_455'].append(mem_change)
 
             if print_preds:
                 pred_word = self.vocabulary.itos[top1[0].item()]
@@ -169,11 +169,11 @@ class Tree2Seq(nn.Module):
             #if not, use predicted token
             input = trg[t] if teacher_force else top1
             
-            # last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** input set (#4.5.6)", print_mem=print_preds) # MEM DEBUGGING!!!
-            # if mem_change: mem_changes['inp_set_456'].append(mem_change)
+            last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** input set (#4.5.6)", print_mem=print_preds) # MEM DEBUGGING!!!
+            if mem_change: mem_changes['inp_set_456'].append(mem_change)
         
-        # last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** after decoding (#4.6)", print_mem=print_preds) # MEM DEBUGGING!!!
-        # if mem_change: mem_changes['after_decoding_46'].append(mem_change)
+        last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** after decoding (#4.6)", print_mem=print_preds) # MEM DEBUGGING!!!
+        if mem_change: mem_changes['after_decoding_46'].append(mem_change)
 
         if print_preds:
             print('End of predictions', flush=True)

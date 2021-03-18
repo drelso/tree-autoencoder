@@ -64,8 +64,8 @@ class Decoder(nn.Module):
         #hidden = [n layers, batch size, hid dim]
         #context = [n layers, batch size, hid dim]
 
-        # last_mem, mem_change  = mem_diff(get_current_mem(), legend="**IN DECODER** decoding (#4.5.1.1)", print_mem=False) # MEM DEBUGGING!!!
-        # if mem_change: mem_changes['dec_inp_4511'].append(mem_change)
+        last_mem, mem_change  = mem_diff(get_current_mem(), legend="**IN DECODER** decoding (#4.5.1.1)", print_mem=False) # MEM DEBUGGING!!!
+        if mem_change: mem_changes['dec_inp_4511'].append(mem_change)
 
         input = input.unsqueeze(0)
         
@@ -75,13 +75,13 @@ class Decoder(nn.Module):
         
         #embedded = [1, batch size, emb dim]
                 
-        # last_mem, mem_change  = mem_diff(last_mem, legend="**IN DECODER** decoding (#4.5.1.2)", print_mem=False) # MEM DEBUGGING!!!
-        # if mem_change: mem_changes['dec_emb_4512'].append(mem_change)
+        last_mem, mem_change  = mem_diff(last_mem, legend="**IN DECODER** decoding (#4.5.1.2)", print_mem=False) # MEM DEBUGGING!!!
+        if mem_change: mem_changes['dec_emb_4512'].append(mem_change)
 
         output, (hidden, cell) = self.rnn(embedded, (hidden, cell))
         
-        # last_mem, mem_change  = mem_diff(last_mem, legend="**IN DECODER** decoding (#4.5.1.3)", print_mem=False) # MEM DEBUGGING!!!
-        # if mem_change: mem_changes['dec_rnn_4513'].append(mem_change)
+        last_mem, mem_change  = mem_diff(last_mem, legend="**IN DECODER** decoding (#4.5.1.3)", print_mem=False) # MEM DEBUGGING!!!
+        if mem_change: mem_changes['dec_rnn_4513'].append(mem_change)
 
         #output = [seq len, batch size, hid dim * n directions]
         #hidden = [n layers * n directions, batch size, hid dim]
@@ -94,8 +94,8 @@ class Decoder(nn.Module):
         
         prediction = self.fc_out(output.squeeze(0))
         
-        # last_mem, mem_change  = mem_diff(last_mem, legend="**IN DECODER** decoding (#4.5.1.4)", print_mem=False) # MEM DEBUGGING!!!
-        # if mem_change: mem_changes['dec_pred_4514'].append(mem_change)
+        last_mem, mem_change  = mem_diff(last_mem, legend="**IN DECODER** decoding (#4.5.1.4)", print_mem=False) # MEM DEBUGGING!!!
+        if mem_change: mem_changes['dec_pred_4514'].append(mem_change)
 
         #prediction = [batch size, output dim]
         

@@ -10,11 +10,20 @@
 import os
 from pathlib import Path
 
+
+run_on_myriad = False
+
 home = str(Path.home())
+
+dir_name = '/tree-autoencoder/'
+if run_on_myriad: dir_name = '/Scratch' + dir_name
+
 # root_dir = home + '/Scratch/tree-autoencoder/' ## TODO: CHANGE FOR MYRIAD FILE STRUCTURE
-root_dir = home + '/tree-autoencoder/' ## TODO: CHANGE FOR DIS FILE STRUCTURE
+root_dir = home + dir_name
 
 parameters = {}
+
+parameters['config_file'] = root_dir + 'config.py'
 
 parameters['general_data_dir'] = home + '/data/'
 
