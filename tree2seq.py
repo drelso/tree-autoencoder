@@ -146,6 +146,11 @@ if __name__ == '__main__':
     val_accuracies = []
 
     mem_check(DEVICE, legend='After batches') # MEMORY DEBUGGING!!!
+    
+    # print('torch.backends.cudnn.enabled = False')
+    # torch.backends.cudnn.enabled = False # MEMORY DEBUGGING!!! MIGHT IMPACT PERFORMANCE!!!
+
+    # print('With repackage_hidden (decoder)')
 
     for epoch in range(parameters['num_epochs']):
         print(f'\n\n {"&" * 80} \n {"#" * 80} \n \t\t\t EPOCH ======> {epoch} \n {"#" * 80} \n {"&" * 80} \n\n')

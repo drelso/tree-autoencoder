@@ -127,7 +127,10 @@ class Tree2Seq(nn.Module):
             #insert input token embedding, previous hidden and previous cell states
             #receive output tensor (predictions) and new hidden and cell states
             # output, hidden, cell = self.decoder(input, hidden, cell)
-
+            
+            dec_hidden = repackage_hidden(dec_hidden)
+            dec_cell = repackage_hidden(dec_cell)
+            
             ## MODIFICATION: ONLY DECODE THE FULL TREE EMBEDDING (ROOT)
             output, dec_hidden, dec_cell = self.decoder(input, dec_hidden, dec_cell, mem_changes)
             
@@ -179,3 +182,19 @@ class Tree2Seq(nn.Module):
             print('End of predictions', flush=True)
         
         return outputs, enc_hidden, dec_hidden, NUM_CORRECT_PREDS
+
+    
+def repackage_hidden(h):
+    """
+    Wraps hidden states in new Tensors, to detach them from their history.
+    
+    NOTE: FUNCTION TAKEN FROM THE 'word_language_model' PYTORCH TUTORIAL AT
+        https://github.com/pytorch/examples/blob/e7870c1fd4706174f52a796521382c9342d4373f/word_language_model/main.py
+        USED TO FREE UP MEMORY BY PREVENTING BPTT TO BACKPROP THROUGH THE
+        ENTIRE DATASET AND INSTEAD ONLY FOCUS ON THE CURRENT BATCH 
+    """
+
+    if isinstance(h, torch.Tensor):
+        return h.detach()
+    else:
+        return tuple(repackage_hidden(v) for v in h)
