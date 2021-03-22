@@ -95,6 +95,9 @@ class TreeLSTM(torch.nn.Module):
 
         # populate the h and c states respecting computation order
         for n in range(node_order.max() + 1):
+            # @DR: Try this for further memory debugging
+            # h = repackage_hidden(h)
+            # c = repackage_hidden(c)
             self._run_lstm(mem_changes, n, h, c, features, node_order, adjacency_list, edge_order)
         
         # print('TreeLSTM batch size', batch_size)

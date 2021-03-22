@@ -174,17 +174,6 @@ if __name__ == '__main__':
 
         # mem_check(DEVICE, legend='Post-epoch, pre saving checkpoint') # MEMORY DEBUGGING!!!
         # get_gpu_status() # MEMORY DEBUGGING!!!
-
-        ## TODO: UNCOMMENT! DEBUGGING
-        # checkpoints_file = parameters['checkpoints_path'] + '_epoch' + str(epoch) + '-chkpt.tar'
-        # print(f'Saving epoch checkpoint file: {checkpoints_file} \n', flush=True)
-        
-        # torch.save({
-        #         'epoch': epoch,
-        #         'model_state_dict': model.state_dict(),
-        #         'optimizer_state_dict': optimizer.state_dict(),
-        #         'loss': epoch_loss
-        #         }, checkpoints_file)
         
         # mem_check(DEVICE, legend='Post-epoch, post saving checkpoint') # MEMORY DEBUGGING!!!
         
@@ -202,6 +191,17 @@ if __name__ == '__main__':
             tensor_data=parameters['use_tensor_data'])
         val_losses.append(val_epoch_loss)
         val_accuracies.append(val_epoch_accuracy)
+        
+        checkpoints_file = parameters['checkpoints_path'] + '_epoch' + str(epoch) + '-chkpt.tar'
+        print(f'Saving epoch checkpoint file: {checkpoints_file} \n', flush=True)
+        
+        torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'loss': epoch_loss,
+                'val_epoch_loss': val_epoch_loss
+                }, checkpoints_file)
 
         mem_check(DEVICE, legend='Post validation') # MEMORY DEBUGGING!!!
 
