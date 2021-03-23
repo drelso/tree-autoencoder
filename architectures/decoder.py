@@ -54,7 +54,7 @@ class Decoder(nn.Module):
         
         self.dropout = nn.Dropout(dropout)
         
-    def forward(self, input, hidden, cell, mem_changes):
+    def forward(self, input, hidden, cell):#, mem_changes=None):
         
         #input = [batch size]
         #hidden = [n layers * n directions, batch size, hid dim]

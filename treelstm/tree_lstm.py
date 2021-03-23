@@ -70,7 +70,7 @@ class TreeLSTM(torch.nn.Module):
         # print(f'W_f size {self.word_emb_dim}x{self.out_features}')
         # print(f'U_f size {self.out_features}x{self.out_features}')
 
-    def forward(self, mem_changes, features, node_order, adjacency_list, edge_order):
+    def forward(self, features, node_order, adjacency_list, edge_order):#, mem_changes=None):
         '''Run TreeLSTM model on a tree data structure with node features
 
         Takes Tensors encoding node features, a tree node adjacency_list, and the order in which 
@@ -98,7 +98,7 @@ class TreeLSTM(torch.nn.Module):
             # @DR: Try this for further memory debugging
             # h = repackage_hidden(h)
             # c = repackage_hidden(c)
-            self._run_lstm(mem_changes, n, h, c, features, node_order, adjacency_list, edge_order)
+            self._run_lstm(n, h, c, features, node_order, adjacency_list, edge_order)#, mem_changes=mem_changes)
         
         # print('TreeLSTM batch size', batch_size)
         # print('TreeLSTM h size', h.shape)
@@ -106,7 +106,7 @@ class TreeLSTM(torch.nn.Module):
 
         return h, c
 
-    def _run_lstm(self, mem_changes, iteration, h, c, features, node_order, adjacency_list, edge_order):
+    def _run_lstm(self, iteration, h, c, features, node_order, adjacency_list, edge_order):#, mem_changes=None):
         '''Helper function to evaluate all tree nodes currently able to be evaluated.
         '''
         # N is the number of nodes in the tree

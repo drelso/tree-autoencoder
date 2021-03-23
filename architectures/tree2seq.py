@@ -53,7 +53,7 @@ class Tree2Seq(nn.Module):
         # torchtext.vocab object
         self.vocabulary = vocabulary
         
-    def forward(self, mem_changes, src_tree, trg, teacher_forcing_ratio = 0.5, phase='train', print_preds=False):
+    def forward(self, src_tree, trg, teacher_forcing_ratio = 0.5, phase='train', print_preds=False):#, mem_changes=None):
         #src = [src len, batch size]
         #trg = [trg len, batch size]
         #teacher_forcing_ratio is probability to use teacher forcing
@@ -85,11 +85,12 @@ class Tree2Seq(nn.Module):
 
         #last hidden state of the encoder is used as the initial hidden state of the decoder
         enc_hidden, enc_cell = self.encoder(
-            mem_changes,
             src_tree['features'],
             src_tree['node_order'],
             src_tree['adjacency_list'],
-            src_tree['edge_order'])
+            src_tree['edge_order']#,
+            #mem_changes=mem_changes
+            )
 
         #first input to the decoder is the <sos> tokens
         input = trg[0,:]
@@ -132,7 +133,7 @@ class Tree2Seq(nn.Module):
             dec_cell = repackage_hidden(dec_cell)
             
             ## MODIFICATION: ONLY DECODE THE FULL TREE EMBEDDING (ROOT)
-            output, dec_hidden, dec_cell = self.decoder(input, dec_hidden, dec_cell, mem_changes)
+            output, dec_hidden, dec_cell = self.decoder(input, dec_hidden, dec_cell)#, mem_changes=mem_changes)
             
             # last_mem, mem_change  = mem_diff(last_mem, legend="**IN MODEL** decoding (#4.5.1)", print_mem=print_preds) # MEM DEBUGGING!!!
             # if mem_change: mem_changes['decoding_451'].append(mem_change)
