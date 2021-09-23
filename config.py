@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 
 
-run_on_myriad = False
+run_on_myriad = True
 
 home = str(Path.home())
 
@@ -81,7 +81,7 @@ parameters['embedding_dim'] = 768 # Hidden unit dimension TODO: CHANGE TO 768? (
 parameters['word_emb_dim'] = 300 # TODO: CHANGE TO 300 # PREV 50
 
 # SEQ2SEQ TRAINING
-parameters['learning_rate'] = 0.5
+parameters['learning_rate'] = 0.005
 parameters['num_layers'] = 1
 parameters['dec_dropout'] = 0 # 0.5 NON-ZERO ONLY WORKS IF NUM_LAYERS > 1
 parameters['num_epochs'] = 10
