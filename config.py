@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 
 
-run_on_myriad = True
+run_on_myriad = False #True
 
 home = str(Path.home())
 
@@ -29,6 +29,7 @@ parameters['general_data_dir'] = home + '/data/'
 
 parameters['use_data_subset'] = True
 parameters['data_subset_size'] = 0.1
+parameters['training_data_subset'] = 0.1 # None
 
 # CONSTRUCT PATHS TO DATASET, COUNTS, NUMERICALISED DATA
 full_data_name = 'bnc_full_proc_data'
@@ -81,10 +82,10 @@ parameters['embedding_dim'] = 768 # Hidden unit dimension TODO: CHANGE TO 768? (
 parameters['word_emb_dim'] = 300 # TODO: CHANGE TO 300 # PREV 50
 
 # SEQ2SEQ TRAINING
-parameters['learning_rate'] = 0.005
+parameters['learning_rate'] = 0.0001
 parameters['num_layers'] = 1
 parameters['dec_dropout'] = 0 # 0.5 NON-ZERO ONLY WORKS IF NUM_LAYERS > 1
-parameters['num_epochs'] = 10
+parameters['num_epochs'] = 20
 parameters['split_ratios'] = [.8, .1, .1]
 parameters['teacher_forcing_ratio'] = 0.5
 parameters['batch_size'] = 1 #15

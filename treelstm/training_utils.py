@@ -210,7 +210,7 @@ def treedict_to_tensor(treedict, device=torch.device('cpu')):
     return tensor_dict
 
 
-def construct_dataset_splits(dataset_path, split_ratios=[.8, .1, .1]):
+def construct_dataset_splits(dataset_path, split_ratios=[.8, .1, .1], subset=None):
     '''
     Read NPY dataset and split into training,
     test and validation sets
@@ -229,6 +229,8 @@ def construct_dataset_splits(dataset_path, split_ratios=[.8, .1, .1]):
     split_ratios : [float], optional
         split ratios for training, validation, (and test) sets
         respectively. Should add up to 1. (default: [.8, .1, .1])
+    subset : float, optional
+        proportion of the dataset to return, this 
     
     Returns
     -------
@@ -264,8 +266,17 @@ def construct_dataset_splits(dataset_path, split_ratios=[.8, .1, .1]):
     train_split = int(split_ratios[0] * data_size)
     train = data[:train_split]
 
+    if subset:
+        train_subset = int(len(train) * subset)
+        train = train[:train_subset]
+
     if len(split_ratios) == 2:
         validate = data[train_split:]
+        
+        if subset:
+            validate_subset = int(len(validate) * subset)
+            validate = validate[:validate_subset]
+        
         print(f'Split sizes: \t train {len(train)} \t validate {len(validate)}')
         return train, validate
     
@@ -273,7 +284,14 @@ def construct_dataset_splits(dataset_path, split_ratios=[.8, .1, .1]):
         val_split = int(split_ratios[1] * data_size) + train_split
         validate = data[train_split : val_split]
         test = data[val_split:]
-    
+        
+        if subset:
+            validate_subset = int(len(validate) * subset)
+            validate = validate[:validate_subset]
+
+            test_subset = int(len(test) * subset)
+            test = validate[:test_subset]
+
     print(f'Split sizes: \t train {len(train)} \t validate {len(validate)} \t test {len(test)}')
 
     return train, validate, test
@@ -880,7 +898,7 @@ def run_model(dataset, model, optimizer, criterion, vocabulary, device=torch.dev
 
         for i, sample in enumerate(dataset):
             sample_start_time = time.time()
-            print_preds = not i % math.ceil(len(dataset) / 50) # or batch_num > len(data_iter) - 1
+            print_preds = not i % math.ceil(len(dataset) / 10) # or batch_num > len(data_iter) - 1
 
             # last_mem, mem_change = mem_diff(start_mem, legend="from start_mem (cumulative) (#1)", print_mem=print_preds) # MEM DEBUGGING!!!
             # if mem_change: mem_changes['start_mem_1'].append(mem_change)

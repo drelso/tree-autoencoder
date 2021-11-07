@@ -97,10 +97,14 @@ if __name__ == '__main__':
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ## LOAD AND SPLIT DATASET
     # 'SAMPLE_bnc_full_seqlist_deptree_numeric_voc-1.json'
-    train_data, val_data, test_data = construct_dataset_splits(parameters['tensor_dataset'], split_ratios=parameters['split_ratios'])
+    train_data, val_data, test_data = construct_dataset_splits(parameters['tensor_dataset'], split_ratios=parameters['split_ratios'], subset=parameters['training_data_subset'])
     
-    print('\nFirst example train seq:', train_data[0]['seq'])
-    print('\nFirst example train tree:', train_data[0]['tree'])
+    print(f'\nFirst example train seq: {train_data[0]["seq"]}')
+    print(f'\nFirst example train tree: {train_data[0]["tree"]}')
+
+    print(f'\nTraining data size {len(train_data)}')
+    print(f'\nValidation data size {len(val_data)}')
+    print(f'\nTest data size {len(test_data)}')
     
     mem_check(DEVICE, legend='After splits') # MEMORY DEBUGGING!!!
     
@@ -195,13 +199,14 @@ if __name__ == '__main__':
         checkpoints_file = parameters['checkpoints_path'] + '_epoch' + str(epoch) + '-chkpt.tar'
         print(f'Saving epoch checkpoint file: {checkpoints_file} \n', flush=True)
         
-        torch.save({
-                'epoch': epoch,
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'loss': epoch_loss,
-                'val_epoch_loss': val_epoch_loss
-                }, checkpoints_file)
+        # @DR UNCOMMENT FOR MAIN RUN
+        # torch.save({
+        #         'epoch': epoch,
+        #         'model_state_dict': model.state_dict(),
+        #         'optimizer_state_dict': optimizer.state_dict(),
+        #         'loss': epoch_loss,
+        #         'val_epoch_loss': val_epoch_loss
+        #         }, checkpoints_file)
 
         mem_check(DEVICE, legend='Post validation') # MEMORY DEBUGGING!!!
 
