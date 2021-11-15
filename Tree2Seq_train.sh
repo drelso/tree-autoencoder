@@ -5,13 +5,13 @@
 # 1. Request a number of GPU cards, in this case 2 (the maximum)
 #$ -l gpu=1
 # 2. Request ten minutes of wallclock time (format hours:minutes:seconds).
-#$ -l h_rt=46:00:00
-# 3. Request 12 gigabytes of RAM (must be an integer)
+#$ -l h_rt=47:00:00
+# 3. Request 60 gigabytes of RAM (must be an integer)
 #$ -l mem=60G
 # 4. Request 15 gigabyte of TMPDIR space (default is 10 GB)
 #$ -l tmpfs=15G
 # 5. Set the name of the job.
-#$ -N Tree2Seq_MEM_DEBUG
+#$ -N Tree2Seq_FullScale_TF25_LR0001
 # 6. Set the working directory to somewhere in your scratch space.  This is
 # a necessary step with the upgraded software stack as compute nodes cannot
 # write to $HOME.

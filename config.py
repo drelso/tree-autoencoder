@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 
 
-run_on_myriad = False #True
+run_on_myriad = True
 
 home = str(Path.home())
 
@@ -29,7 +29,7 @@ parameters['general_data_dir'] = home + '/data/'
 
 parameters['use_data_subset'] = True
 parameters['data_subset_size'] = 0.1
-parameters['training_data_subset'] = 0.1 # None
+parameters['training_data_subset'] = None
 
 # CONSTRUCT PATHS TO DATASET, COUNTS, NUMERICALISED DATA
 full_data_name = 'bnc_full_proc_data'
@@ -87,7 +87,7 @@ parameters['num_layers'] = 1
 parameters['dec_dropout'] = 0 # 0.5 NON-ZERO ONLY WORKS IF NUM_LAYERS > 1
 parameters['num_epochs'] = 20
 parameters['split_ratios'] = [.8, .1, .1]
-parameters['teacher_forcing_ratio'] = 0.5
+parameters['teacher_forcing_ratio'] = 0.25
 parameters['batch_size'] = 1 #15
 
 # if True sorts samples based on the length of the sequence
