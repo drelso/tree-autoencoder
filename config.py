@@ -78,7 +78,7 @@ parameters['use_tensor_data'] = True
 # parameters['val_data'] = dataset_dir + dataset_name + '_val.json'
 
 # TRAINING VARIABLES
-parameters['embedding_dim'] = 768 # Hidden unit dimension TODO: CHANGE TO 768? (BERT) # PREV: 20
+parameters['embedding_dim'] = 1300 # Hidden unit dimension TODO: CHANGE TO 768? (BERT) # PREV: 20
 parameters['word_emb_dim'] = 300 # TODO: CHANGE TO 300 # PREV 50
 
 # SEQ2SEQ TRAINING
@@ -87,7 +87,7 @@ parameters['num_layers'] = 1
 parameters['dec_dropout'] = 0 # 0.5 NON-ZERO ONLY WORKS IF NUM_LAYERS > 1
 parameters['num_epochs'] = 20
 parameters['split_ratios'] = [.8, .1, .1]
-parameters['teacher_forcing_ratio'] = 0.25
+parameters['teacher_forcing_ratio'] = 0.5
 parameters['batch_size'] = 1 #15
 
 # if True sorts samples based on the length of the sequence
@@ -103,6 +103,7 @@ parameters['all_models_dir'] = root_dir + 'model/'
 parameters['model_name'] =  dataset_name + \
                             '_voc-' + str(parameters['vocab_cutoff']) + \
                             '_w-emb-' + str(parameters['word_emb_dim']) + \
+                            '_hiddim-' + str(parameters['embedding_dim']) + \
                             '_btch-' + str(parameters['batch_size']) + \
                             '_epch-' + str(parameters['num_epochs']) + \
                             '_drpt-' + str(parameters['dec_dropout']).strip("0").strip(".") + \
