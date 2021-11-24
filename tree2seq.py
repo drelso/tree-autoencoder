@@ -97,7 +97,10 @@ if __name__ == '__main__':
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ## LOAD AND SPLIT DATASET
     # 'SAMPLE_bnc_full_seqlist_deptree_numeric_voc-1.json'
-    train_data, val_data, test_data = construct_dataset_splits(parameters['tensor_dataset'], split_ratios=parameters['split_ratios'], subset=parameters['training_data_subset'])
+    train_data, val_data, test_data = construct_dataset_splits(
+                                        parameters['tensor_dataset'],
+                                        split_ratios=parameters['split_ratios'],
+                                        subset=parameters['training_data_subset'])
     
     print(f'\nFirst example train seq: {train_data[0]["seq"]}')
     print(f'\nFirst example train tree: {train_data[0]["tree"]}')
@@ -110,11 +113,28 @@ if __name__ == '__main__':
     
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ## MODEL AND TRAINING INITIALISATION
+    starting_epoch = 0
     encoder = TreeLSTM(input_dim, parameters['embedding_dim'], parameters['word_emb_dim'])
     decoder = Decoder(input_dim, parameters['embedding_dim'], parameters['embedding_dim'], parameters['num_layers'], parameters['dec_dropout'])
 
     model = Tree2Seq(encoder, decoder, DEVICE, vocabulary)#.train()
     
+    ## LOADING MODELS
+    if parameters['load_model']:
+        if parameters['load_model'].find('checkpoints') > -1:
+            # LOAD CHECKPOINT
+            print(f'Loading checkpoint file from: {parameters["load_model"]} \n')
+            checkpoint = torch.load(parameters['load_model'])
+            model_sd = checkpoint['model_state_dict']
+            starting_epoch = int(checkpoint['epoch']) + 1
+            print(f"\n\nLoaded checkpoint, resuming training at epoch {starting_epoch}\n\n")
+            # optim_sd = checkpoint['optimizer_state_dict']
+        else:
+            print(f'Loading model file from: {parameters["load_model"]} \n')
+            model_sd = torch.load(parameters['model_file'])
+
+        model.load_state_dict(model_sd)
+
     mem_check(DEVICE, legend='After model') # MEMORY DEBUGGING!!!
 
     print('\n \\\\\\\\\\\\\\\\\\\\\\\\\ \n TRAINABLE PARAMETERS \n \\\\\\\\\\\\\\\\\\\\\\\\\ \n ')
@@ -156,8 +176,14 @@ if __name__ == '__main__':
 
     # print('With repackage_hidden (decoder)')
 
-    for epoch in range(parameters['num_epochs']):
+    for epoch in range(starting_epoch, parameters['num_epochs']):
         print(f'\n\n {"&" * 80} \n {"#" * 80} \n \t\t\t EPOCH ======> {epoch} \n {"#" * 80} \n {"&" * 80} \n\n')
+
+        print("Reshuffling data")
+        train_data, val_data, test_data = construct_dataset_splits(
+                                        parameters['tensor_dataset'],
+                                        split_ratios=parameters['split_ratios'],
+                                        subset=parameters['training_data_subset'])
         
         epoch_start_time = time.time()
 
@@ -199,14 +225,13 @@ if __name__ == '__main__':
         checkpoints_file = parameters['checkpoints_path'] + '_epoch' + str(epoch) + '-chkpt.tar'
         print(f'Saving epoch checkpoint file: {checkpoints_file} \n', flush=True)
         
-        # @DR UNCOMMENT FOR MAIN RUN
-        # torch.save({
-        #         'epoch': epoch,
-        #         'model_state_dict': model.state_dict(),
-        #         'optimizer_state_dict': optimizer.state_dict(),
-        #         'loss': epoch_loss,
-        #         'val_epoch_loss': val_epoch_loss
-        #         }, checkpoints_file)
+        torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'loss': epoch_loss,
+                'val_epoch_loss': val_epoch_loss
+                }, checkpoints_file)
 
         mem_check(DEVICE, legend='Post validation') # MEMORY DEBUGGING!!!
 

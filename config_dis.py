@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 
 
-run_on_myriad = True
+run_on_myriad = False #True
 
 home = str(Path.home())
 
@@ -85,9 +85,9 @@ parameters['word_emb_dim'] = 300 # TODO: CHANGE TO 300 # PREV 50
 parameters['learning_rate'] = 0.0001
 parameters['num_layers'] = 1
 parameters['dec_dropout'] = 0 # 0.5 NON-ZERO ONLY WORKS IF NUM_LAYERS > 1
-parameters['num_epochs'] = 20
+parameters['num_epochs'] = 10
 parameters['split_ratios'] = [.8, .1, .1]
-parameters['teacher_forcing_ratio'] = 0.25
+parameters['teacher_forcing_ratio'] = 0.5
 parameters['batch_size'] = 1 #15
 
 # if True sorts samples based on the length of the sequence
@@ -117,6 +117,3 @@ parameters['param_name'] = 'encoder.word_embedding'
 parameters['word_embs_path'] = parameters['model_dir'] + 'tree_input_word_embs.npy'
 
 parameters['max_seq_len'] = 60
-
-parameters['load_model'] = False
-# parameters['load_model'] = parameters['all_models_dir'] + '20200825_' + parameters['model_name'] + '/checkpoints/0-epoch-chkpt.tar'
